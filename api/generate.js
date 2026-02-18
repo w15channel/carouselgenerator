@@ -108,7 +108,16 @@ FORMATO EXATO DE RESPOSTA (sem nenhum caractere fora deste JSON):
       return res.status(502).json({ error: `Erro na API Hugging Face (${hfRes.status}).` });
     }
 
-    const hfData = await hfRes.json();
+    const hfRaw = await hfRes.text();
+    let hfData;
+
+    try {
+      hfData = JSON.parse(hfRaw);
+    } catch {
+      console.error('Hugging Face text response was not JSON:', hfRaw.slice(0, 500));
+      return res.status(502).json({ error: 'A API de texto retornou resposta inválida. Tente novamente em instantes.' });
+    }
+
     const rawText = hfData?.choices?.[0]?.message?.content;
 
     if (!rawText) {
@@ -125,7 +134,7 @@ FORMATO EXATO DE RESPOSTA (sem nenhum caractere fora deste JSON):
     try {
       parsed = JSON.parse(cleaned);
     } catch {
-      return res.status(502).json({ error: 'A IA retornou JSON inválido para os slides.' });
+      return res.status(502).json({ error: 'A IA de texto retornou formato inválido para os slides. Tente novamente.' });
     }
 
     if (!parsed.slides || !Array.isArray(parsed.slides) || parsed.slides.length === 0) {
@@ -154,6 +163,6 @@ FORMATO EXATO DE RESPOSTA (sem nenhum caractere fora deste JSON):
     return res.status(200).json({ slides: slidesWithImages });
   } catch (err) {
     console.error('Internal error:', err);
-    return res.status(500).json({ error: 'Erro interno no servidor: ' + err.message });
+    return res.status(500).json({ error: 'Erro interno no servidor ao processar a geração. Tente novamente.' });
   }
 };
