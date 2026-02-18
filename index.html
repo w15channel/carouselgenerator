@@ -157,6 +157,7 @@
         <header>
             <div class="wr-badge"><i class="fa-solid fa-bolt"></i> WR-TEC | HUGGING FACE POWERED</div>
             <h1>Gerador de<br>Carrosséis de Elite</h1>
+            <p style="color: var(--text-low); font-size: 1.1rem;">Processamento via Hugging Face Inference API.</p>
             <p style="color: var(--text-low); font-size: 1.1rem;">Texto + Imagens gerados por IA via Hugging Face.</p>
         </header>
 
@@ -235,11 +236,25 @@
                     body: JSON.stringify({ topic, total })
                 });
 
-                if (!response.ok) {
-                    const errData = await response.json();
-                    throw new Error(errData.error || "Erro na Vercel");
+                const rawText = await response.text();
+                let data;
+
+                try {
+                    data = JSON.parse(rawText);
+                } catch {
+                    const previewText = rawText ? rawText.slice(0, 180) : 'sem resposta';
+                    throw new Error(`Resposta inválida da API (não é JSON): ${previewText}`);
                 }
 
+                if (!response.ok) {
+                    throw new Error(data.error || `Erro na Vercel (${response.status})`);
+                }
+
+                if (!data.slides || !Array.isArray(data.slides)) {
+                    throw new Error('Resposta da API sem campo slides válido.');
+                }
+
+                const slidesContent = data.slides;
                 const data = await response.json();
                 const slidesContent = data.slides;
 
@@ -257,6 +272,7 @@
                     frame.className = 'slide-frame';
                     frame.id = `frame-${i}`;
                     frame.innerHTML = `
+                        <img src="${slide.image}" class="slide-bg">
                         <img src="${imgSrc}" class="slide-bg" crossorigin="anonymous">
                         <div class="slide-overlay"></div>
                         ${isAiImage ? '<span class="slide-ai-badge"><i class="fa-solid fa-microchip"></i> AI IMAGE</span>' : ''}
