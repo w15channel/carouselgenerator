@@ -1,5 +1,5 @@
 // api/generate.js
-// Vercel Serverless Function — Google Gemini AI
+// Vercel Serverless Function — Hugging Face Inference API
 
 module.exports = async function handler(req, res) {
   // CORS headers (for local dev)
@@ -15,9 +15,9 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido. Use POST.' });
   }
 
-  const API_KEY = process.env.GEMINI_API_KEY;
-  if (!API_KEY) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY não configurada nas variáveis de ambiente da Vercel.' });
+  const HF_TOKEN = process.env.HF_TOKEN;
+  if (!HF_TOKEN) {
+    return res.status(500).json({ error: 'HF_TOKEN não configurada nas variáveis de ambiente da Vercel.' });
   }
 
   const { topic, total = 5 } = req.body || {};
@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Campo "topic" é obrigatório.' });
   }
 
-  const numSlides = Math.min(Math.max(parseInt(total) || 5, 3), 10);
+  const numSlides = Math.min(Math.max(parseInt(total, 10) || 5, 3), 10);
 
   const prompt = `
 Você é um estrategista de conteúdo especialista em criar carrosséis virais para Instagram.
@@ -52,46 +52,50 @@ FORMATO EXATO DE RESPOSTA (sem nenhum caractere fora deste JSON):
 `.trim();
 
   try {
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.8,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 2048,
+    const hfRes = await fetch('https://router.huggingface.co/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${HF_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        provider: 'nebius',
+        model: 'Qwen/Qwen2.5-72B-Instruct',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você responde sempre com JSON válido e sem markdown.',
           },
-        }),
-      }
-    );
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.8,
+        max_tokens: 2048,
+      }),
+    });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      console.error('Gemini API error:', errText);
-      return res.status(502).json({ error: `Erro na API Gemini (${geminiRes.status}).` });
+    if (!hfRes.ok) {
+      const errText = await hfRes.text();
+      console.error('Hugging Face API error:', errText);
+      return res.status(502).json({ error: `Erro na API Hugging Face (${hfRes.status}).` });
     }
 
-    const geminiData = await geminiRes.json();
-
-    // Extract text from Gemini response
-    const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const hfData = await hfRes.json();
+    const rawText = hfData?.choices?.[0]?.message?.content;
 
     if (!rawText) {
-      console.error('Gemini response structure unexpected:', JSON.stringify(geminiData));
-      return res.status(502).json({ error: 'Resposta inesperada da Gemini. Sem conteúdo gerado.' });
+      console.error('Hugging Face response structure unexpected:', JSON.stringify(hfData));
+      return res.status(502).json({ error: 'Resposta inesperada da Hugging Face. Sem conteúdo gerado.' });
     }
 
-    // Strip any potential markdown code fences Gemini might add despite instructions
+    // Strip any potential markdown code fences
     const cleaned = rawText
       .replace(/```json\s*/gi, '')
       .replace(/```\s*/gi, '')
       .trim();
 
-    // Validate it's parseable JSON
     let parsed;
     try {
       parsed = JSON.parse(cleaned);
@@ -105,9 +109,8 @@ FORMATO EXATO DE RESPOSTA (sem nenhum caractere fora deste JSON):
     }
 
     return res.status(200).json({ slides: parsed.slides });
-
   } catch (err) {
     console.error('Internal error:', err);
     return res.status(500).json({ error: 'Erro interno no servidor: ' + err.message });
   }
-}
+};
