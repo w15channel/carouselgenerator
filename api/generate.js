@@ -1,11 +1,8 @@
 // api/generate.js
-// Vercel Serverless Function — Hugging Face Inference API
+// Vercel Serverless Function — Hugging Face (text) + Pollinations (image)
 
-async function generateSlideImage({ topic, slideTitle, slideBody, hfToken }) {
-  const { InferenceClient } = await import('@huggingface/inference');
-  const client = new InferenceClient(hfToken);
-
-  const imagePrompt = [
+async function generateSlideImage({ topic, slideTitle, slideBody }) {
+  const prompt = [
     `Instagram carousel background about: ${topic}`,
     `Slide focus: ${slideTitle}`,
     `Context: ${slideBody}`,
@@ -13,17 +10,26 @@ async function generateSlideImage({ topic, slideTitle, slideBody, hfToken }) {
     'No text, no letters, no logos, no watermark'
   ].join('. ');
 
-  const imageBlob = await client.textToImage({
-    provider: 'fal-ai',
-    model: 'stabilityai/stable-diffusion-3.5-large',
-    inputs: imagePrompt,
-    parameters: { num_inference_steps: 5 },
+  const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1080&height=1350&nologo=true&model=flux&enhance=true`;
+
+  const imgRes = await fetch(imageUrl, {
+    method: 'GET',
+    headers: { Accept: 'image/*' },
   });
 
-  const buffer = Buffer.from(await imageBlob.arrayBuffer());
-  const base64 = buffer.toString('base64');
-  const mime = imageBlob.type || 'image/png';
-  return `data:${mime};base64,${base64}`;
+  if (!imgRes.ok) {
+    const errText = await imgRes.text();
+    throw new Error(`Erro na API de imagem (${imgRes.status}): ${errText.slice(0, 200)}`);
+  }
+
+  const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+  if (!contentType.startsWith('image/')) {
+    throw new Error(`API de imagem retornou content-type inválido: ${contentType}`);
+  }
+
+  const arrayBuffer = await imgRes.arrayBuffer();
+  const base64 = Buffer.from(arrayBuffer).toString('base64');
+  return `data:${contentType};base64,${base64}`;
 }
 
 module.exports = async function handler(req, res) {
@@ -138,7 +144,6 @@ FORMATO EXATO DE RESPOSTA (sem nenhum caractere fora deste JSON):
         topic: topic.trim(),
         slideTitle: slide.title,
         slideBody: slide.body,
-        hfToken: HF_TOKEN,
       });
 
       if (!image) {

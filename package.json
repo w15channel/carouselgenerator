@@ -9,8 +9,5 @@
   },
   "engines": {
     "node": "20.x"
-  },
-  "dependencies": {
-    "@huggingface/inference": "^4.8.0"
   }
 }
