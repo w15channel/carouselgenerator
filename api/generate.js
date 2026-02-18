@@ -1,41 +1,30 @@
-// api/generate.js
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 export default async function handler(req, res) {
   const { topic, total } = req.body;
-  const apiKey = process.env.GEMINI_API_KEY; 
-
-  if (!apiKey) {
-    return res.status(500).json({ error: "Chave GEMINI_API_KEY não encontrada na Vercel." });
-  }
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `Aja como um Copywriter Sênior. Tema: "${topic}". 
-            Crie um roteiro de carrossel para Instagram com ${total} slides. 
-            Regras: Capa em CAIXA ALTA, conteúdo sem reticências, e o último slide deve ser uma CTA poderosa terminando em !. 
-            Retorne APENAS um JSON no formato: { "slides": [ { "title": "...", "body": "..." } ] }`
-          }]
-        }],
-        generationConfig: {
-          responseMimeType: "application/json"
-        }
-      })
+    // Configurando o motor Gemini 3
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-3-flash-preview",
+      generationConfig: { responseMimeType: "application/json" }
     });
 
-    const data = await response.json();
-    
-    // O Gemini retorna o conteúdo dentro de uma estrutura específica
-    const content = data.candidates[0].content.parts[0].text;
-    res.status(200).json(content);
+    const prompt = `Aja como um Copywriter Sênior. Tema: "${topic}". 
+    Crie um roteiro de carrossel para Instagram com ${total} slides. 
+    Estrutura: Capa em CAIXA ALTA, conteúdo assertivo, e o último slide com uma CTA poderosa terminando em !. 
+    Retorne o JSON neste formato: { "slides": [ { "title": "...", "body": "..." } ] }`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    // Enviando a resposta limpa para o seu HTML
+    res.status(200).json(text);
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Erro interno no motor Gemini." });
+    console.error("Erro no SDK Gemini:", error);
+    res.status(500).json({ error: "Falha no processamento do Gemini 3." });
   }
 }
