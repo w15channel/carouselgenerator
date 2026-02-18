@@ -41,38 +41,22 @@
         header { text-align: center; margin-bottom: 50px; }
 
         .wr-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(196, 166, 97, 0.1);
-            border: 1px solid rgba(196, 166, 97, 0.2);
-            color: var(--accent);
-            padding: 8px 18px;
-            border-radius: 100px;
-            font-size: 0.75rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+            display: inline-flex; align-items: center; gap: 10px;
+            background: rgba(196, 166, 97, 0.1); border: 1px solid rgba(196, 166, 97, 0.2);
+            color: var(--accent); padding: 8px 18px; border-radius: 100px;
+            font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
             margin-bottom: 20px;
         }
 
         h1 {
-            font-size: clamp(2.2rem, 5vw, 3.5rem);
-            font-weight: 800;
-            letter-spacing: -2px;
-            line-height: 0.95;
-            margin-bottom: 15px;
-            background: linear-gradient(to bottom, #fff 60%, #94a3b8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: clamp(2.2rem, 5vw, 3.5rem); font-weight: 800; letter-spacing: -2px; line-height: 0.95;
+            margin-bottom: 15px; background: linear-gradient(to bottom, #fff 60%, #94a3b8);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
 
         .engine-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 40px;
-            padding: 40px;
-            box-shadow: 0 50px 100px rgba(0,0,0,0.8);
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 40px; padding: 40px; box-shadow: 0 50px 100px rgba(0,0,0,0.8);
             margin-bottom: 60px;
         }
 
@@ -81,36 +65,18 @@
         .input-box label { font-size: 0.7rem; font-weight: 700; color: var(--text-low); text-transform: uppercase; letter-spacing: 1.5px; }
 
         input, textarea {
-            background: #0d111a;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 18px;
-            color: white;
-            font-size: 1rem;
-            font-family: inherit;
-            transition: 0.3s ease;
+            background: #0d111a; border: 1px solid var(--border); border-radius: 12px;
+            padding: 18px; color: white; font-size: 1rem; font-family: inherit; transition: 0.3s ease;
         }
 
         textarea { resize: vertical; min-height: 100px; }
         input:focus, textarea:focus { border-color: var(--accent); outline: none; background: #111521; }
 
         .btn-run {
-            width: 100%;
-            background: #fff;
-            color: #000;
-            border: none;
-            border-radius: 14px;
-            padding: 20px;
-            font-size: 1.1rem;
-            font-weight: 900;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            transition: 0.4s;
+            width: 100%; background: #fff; color: #000; border: none; border-radius: 14px;
+            padding: 20px; font-size: 1.1rem; font-weight: 900; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 2px; display: flex;
+            align-items: center; justify-content: center; gap: 12px; transition: 0.4s;
         }
 
         .btn-run:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(255,255,255,0.1); }
@@ -118,26 +84,14 @@
         .preview-area { display: none; margin-top: 60px; width: 100%; }
 
         .carousel-track {
-            display: flex;
-            overflow-x: auto;
-            gap: 30px;
-            padding: 10px 0 40px;
-            scroll-snap-type: x mandatory;
-            scrollbar-width: thin;
-            scrollbar-color: var(--accent) transparent;
+            display: flex; overflow-x: auto; gap: 30px; padding: 10px 0 40px;
+            scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--accent) transparent;
         }
 
         .slide-frame {
-            min-width: 500px;
-            width: 500px;
-            height: 500px;
-            aspect-ratio: 1 / 1;
-            position: relative;
-            overflow: hidden;
-            scroll-snap-align: start;
-            flex-shrink: 0;
-            background: #000;
-            border: 1px solid rgba(255,255,255,0.15);
+            min-width: 500px; width: 500px; height: 500px; aspect-ratio: 1 / 1;
+            position: relative; overflow: hidden; scroll-snap-align: start; flex-shrink: 0;
+            background: #000; border: 1px solid rgba(255,255,255,0.15);
         }
 
         .slide-bg { width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 1; opacity: 0.4; }
@@ -172,9 +126,9 @@
 
     <div class="container">
         <header>
-            <div class="wr-badge"><i class="fa-solid fa-bolt"></i> WR-TEC | GROQ POWERED</div>
+            <div class="wr-badge"><i class="fa-solid fa-bolt"></i> WR-TEC | GEMINI POWERED</div>
             <h1>Gerador de<br>Carrosséis de Elite</h1>
-            <p style="color: var(--text-low); font-size: 1.1rem;">Processamento ultra-rápido via Groq Llama 3.</p>
+            <p style="color: var(--text-low); font-size: 1.1rem;">Processamento via Google Gemini AI.</p>
         </header>
 
         <div class="engine-card">
@@ -240,20 +194,21 @@
             track.innerHTML = '';
 
             try {
-                // CHAMADA PARA A SERVERLESS FUNCTION DA VERCEL
                 const response = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ topic, total })
                 });
 
-                if (!response.ok) throw new Error("Erro na API da Vercel");
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || "Erro na Vercel");
+                }
 
                 const rawData = await response.json();
                 const jsonParsed = JSON.parse(rawData);
                 const slidesContent = jsonParsed.slides;
 
-                // Fundo profissional padrão (Unsplash Abstract Dark)
                 const sharedImg = "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop";
 
                 slidesContent.forEach((slide, i) => {
@@ -261,8 +216,8 @@
                     wrapper.className = 'slide-wrapper';
 
                     const frame = document.createElement('div');
-                    frame.id = `slide-frame-${i}`;
                     frame.className = 'slide-frame';
+                    frame.id = `frame-${i}`;
                     frame.innerHTML = `
                         <img src="${sharedImg}" class="slide-bg">
                         <div class="slide-overlay"></div>
@@ -293,7 +248,7 @@
 
             } catch (err) {
                 console.error(err);
-                alert("Erro ao conectar com o motor WR-TEC na Vercel.");
+                alert("Erro no motor WR-TEC: " + err.message);
                 loader.style.display = 'none';
             } finally {
                 btn.disabled = false;
@@ -303,25 +258,19 @@
         async function downloadSlide(element, index) {
             const canvas = await html2canvas(element, { scale: 2, useCORS: true });
             const link = document.createElement('a');
-            link.download = `wrtec-slide-${index}.png`;
+            link.download = `slide-${index}.png`;
             link.href = canvas.toDataURL("image/png");
             link.click();
         }
 
         function copyPix() {
             const pixValue = document.getElementById('pix_code').innerText;
-            navigator.clipboard.writeText(pixValue).then(() => {
-                alert("Chave Pix copiada!");
-            });
+            navigator.clipboard.writeText(pixValue).then(() => { alert("Chave Pix copiada!"); });
         }
 
         window.onload = function() {
             const pixData = document.getElementById("pix_code").innerText;
-            new QRCode(document.getElementById("qrcode"), {
-                text: pixData,
-                width: 140,
-                height: 140
-            });
+            new QRCode(document.getElementById("qrcode"), { text: pixData, width: 140, height: 140 });
         };
     </script>
 </body>
