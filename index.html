@@ -441,12 +441,15 @@
                 });
 
                 const ct = res.headers.get('content-type') || '';
-                if (!res.ok || !ct.includes('application/json')) {
+                if (!ct.includes('application/json')) {
                     const txt = await res.text();
-                    throw new Error(`Erro do servidor (${res.status}): ${txt.slice(0, 200)}`);
+                    throw new Error(`Resposta inválida do servidor (${res.status}): ${txt.slice(0, 200)}`);
                 }
 
                 const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data?.error || `Erro do servidor (${res.status}).`);
+                }
 
                 // Handle nested JSON string (Gemini sometimes returns a stringified JSON)
                 let slides = data.slides;
