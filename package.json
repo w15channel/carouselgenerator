@@ -1,7 +1,29 @@
 {
   "name": "wr-tec-carousel",
   "version": "1.0.0",
+  "description": "Gerador de carrosséis de Instagram com Google Gemini AI",
+  "main": "api/generate.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build needed for serverless'",
+    "start": "vercel dev"
+  },
+  "keywords": [
+    "instagram",
+    "carousel",
+    "gemini",
+    "ai",
+    "vercel"
+  ],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.21.0"
+  },
+  "devDependencies": {
+    "vercel": "latest"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
