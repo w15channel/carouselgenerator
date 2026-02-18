@@ -40,6 +40,31 @@ function buildFallbackSlides(topic, total) {
   return extended.slice(0, total);
 }
 
+
+async function generateSlideImage(topic, hfToken) {
+  try {
+    const { InferenceClient } = await import('@huggingface/inference');
+    const client = new InferenceClient(hfToken);
+
+    const prompt = `Cinematic editorial background for an Instagram carousel about: ${topic}. No text, no logos, modern and premium style.`;
+
+    const imageBlob = await client.textToImage({
+      provider: 'fal-ai',
+      model: 'stabilityai/stable-diffusion-3.5-large',
+      inputs: prompt,
+      parameters: { num_inference_steps: 5 },
+    });
+
+    const buffer = Buffer.from(await imageBlob.arrayBuffer());
+    const base64 = buffer.toString('base64');
+    const mime = imageBlob.type || 'image/png';
+    return `data:${mime};base64,${base64}`;
+  } catch (err) {
+    console.error('Image generation error:', err?.message || err);
+    return null;
+  }
+}
+
 module.exports = async function handler(req, res) {
   // CORS headers (for local dev)
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -66,6 +91,7 @@ module.exports = async function handler(req, res) {
   if (!HF_TOKEN) {
     return res.status(200).json({
       slides: buildFallbackSlides(topic, numSlides),
+      image: null,
       warning: 'HF token ausente. Conteúdo gerado em modo local (fallback). Configure HF_TOKEN para usar IA externa.'
     });
   }
@@ -123,6 +149,7 @@ FORMATO EXATO DE RESPOSTA (sem nenhum caractere fora deste JSON):
       console.error('Hugging Face API error:', errText);
       return res.status(200).json({
         slides: buildFallbackSlides(topic, numSlides),
+        image: null,
         warning: `Falha na Hugging Face (${hfRes.status}). Conteúdo gerado em modo local (fallback).`
       });
     }
@@ -134,6 +161,7 @@ FORMATO EXATO DE RESPOSTA (sem nenhum caractere fora deste JSON):
       console.error('Hugging Face response structure unexpected:', JSON.stringify(hfData));
       return res.status(200).json({
         slides: buildFallbackSlides(topic, numSlides),
+        image: null,
         warning: 'Resposta inesperada da Hugging Face. Conteúdo gerado em modo local (fallback).'
       });
     }
@@ -151,6 +179,7 @@ FORMATO EXATO DE RESPOSTA (sem nenhum caractere fora deste JSON):
       console.error('JSON parse error. Raw text was:', rawText);
       return res.status(200).json({
         slides: buildFallbackSlides(topic, numSlides),
+        image: null,
         warning: 'A IA retornou formato inválido. Conteúdo gerado em modo local (fallback).'
       });
     }
@@ -158,15 +187,22 @@ FORMATO EXATO DE RESPOSTA (sem nenhum caractere fora deste JSON):
     if (!parsed.slides || !Array.isArray(parsed.slides)) {
       return res.status(200).json({
         slides: buildFallbackSlides(topic, numSlides),
+        image: null,
         warning: 'Formato de slides ausente na resposta da IA. Conteúdo gerado em modo local (fallback).'
       });
     }
 
-    return res.status(200).json({ slides: parsed.slides });
+    const image = await generateSlideImage(topic.trim(), HF_TOKEN);
+    return res.status(200).json({
+      slides: parsed.slides,
+      image,
+      warning: image ? undefined : 'Não foi possível gerar imagem com Hugging Face. Usando imagem padrão.'
+    });
   } catch (err) {
     console.error('Internal error:', err);
     return res.status(200).json({
       slides: buildFallbackSlides(topic, numSlides),
+      image: null,
       warning: 'Erro interno ao acessar IA externa. Conteúdo gerado em modo local (fallback).'
     });
   }

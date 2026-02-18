@@ -213,7 +213,7 @@
                     alert(data.warning);
                 }
 
-                const sharedImg = "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop";
+                const sharedImg = data.image || "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop";
 
                 slidesContent.forEach((slide, i) => {
                     const wrapper = document.createElement('div');
