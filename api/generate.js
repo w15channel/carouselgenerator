@@ -1,5 +1,7 @@
 // api/generate.js
 // Vercel Serverless Function — Hugging Face Inference API (texto + imagem)
+const { InferenceClient } = require("@huggingface/inference");
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -16,6 +18,7 @@ module.exports = async function handler(req, res) {
   }
 
   const numSlides = Math.min(Math.max(parseInt(total, 10) || 5, 3), 10);
+  const client = new InferenceClient(HF_TOKEN);
 
   // ─── 1. GERAR TEXTO DOS SLIDES ────────────────────────────────────────────
   const prompt = `
@@ -84,44 +87,24 @@ FORMATO EXATO DE RESPOSTA:
     return res.status(500).json({ error: 'Erro ao gerar texto: ' + err.message });
   }
 
-  // ─── 2. GERAR IMAGENS EM PARALELO ────────────────────────────────────────
-  // Modelo leve e rápido no HF; troque pelo que preferir (ex: black-forest-labs/FLUX.1-schnell)
-  const IMAGE_MODEL = 'black-forest-labs/FLUX.1-schnell';
-
+  // ─── 2. GERAR IMAGENS EM PARALELO (Replicate + SDXL-Lightning) ───────────
   async function generateImage(imagePrompt) {
     try {
-      const imgRes = await fetch(
-        `https://router.huggingface.co/hf-inference/models/${IMAGE_MODEL}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${HF_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            inputs: imagePrompt + ', cinematic lighting, high quality, photorealistic, no text',
-            parameters: {
-              width: 512,
-              height: 512,
-              num_inference_steps: 4, // schnell funciona bem com 4 steps
-            },
-          }),
-        }
-      );
+      const imageBlob = await client.textToImage({
+        provider: 'replicate',
+        model: 'ByteDance/SDXL-Lightning',
+        inputs: imagePrompt + ', cinematic lighting, high quality, photorealistic, no text, no letters',
+        parameters: { num_inference_steps: 5 },
+      });
 
-      if (!imgRes.ok) {
-        const errText = await imgRes.text();
-        console.warn(`Imagem falhou para prompt "${imagePrompt}":`, errText);
-        return null; // fallback: sem imagem
-      }
-
-      // HF retorna o binário da imagem diretamente
-      const arrayBuffer = await imgRes.arrayBuffer();
+      // Converte o Blob retornado para base64
+      const arrayBuffer = await imageBlob.arrayBuffer();
       const base64 = Buffer.from(arrayBuffer).toString('base64');
-      return `data:image/jpeg;base64,${base64}`;
+      const mimeType = imageBlob.type || 'image/jpeg';
+      return `data:${mimeType};base64,${base64}`;
     } catch (err) {
-      console.warn('Erro ao gerar imagem:', err.message);
-      return null;
+      console.warn(`Imagem falhou para prompt "${imagePrompt}":`, err.message);
+      return null; // fallback tratado no frontend
     }
   }
 
