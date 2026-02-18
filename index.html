@@ -80,6 +80,7 @@
         }
 
         .btn-run:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(255,255,255,0.1); }
+        .btn-run:disabled { opacity: 0.6; cursor: not-allowed; }
 
         .preview-area { display: none; margin-top: 60px; width: 100%; }
 
@@ -181,7 +182,10 @@
             const ig = document.getElementById('user_handle').value;
             const total = parseInt(document.getElementById('num_slides').value);
             
-            if(!topic) { alert("O briefing é necessário!"); return; }
+            if(!topic) { 
+                alert("O briefing é necessário!"); 
+                return; 
+            }
 
             const btn = document.getElementById('run_btn');
             const loader = document.getElementById('loader');
@@ -202,12 +206,16 @@
 
                 if (!response.ok) {
                     const errData = await response.json();
-                    throw new Error(errData.error || "Erro na Vercel");
+                    throw new Error(errData.error || "Erro na API");
                 }
 
-                const rawData = await response.json();
-                const jsonParsed = JSON.parse(rawData);
-                const slidesContent = jsonParsed.slides;
+                // AQUI ESTÁ A CORREÇÃO: response.json() já retorna um objeto parseado
+                const slidesData = await response.json();
+                const slidesContent = slidesData.slides;
+
+                if (!slidesContent || !Array.isArray(slidesContent)) {
+                    throw new Error("Formato de resposta inválido");
+                }
 
                 const sharedImg = "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop";
 
@@ -218,16 +226,21 @@
                     const frame = document.createElement('div');
                     frame.className = 'slide-frame';
                     frame.id = `frame-${i}`;
+                    
+                    // Escapar caracteres especiais no HTML
+                    const safeTitle = escapeHtml(slide.title);
+                    const safeBody = escapeHtml(slide.body);
+                    
                     frame.innerHTML = `
-                        <img src="${sharedImg}" class="slide-bg">
+                        <img src="${sharedImg}" class="slide-bg" alt="Fundo do slide">
                         <div class="slide-overlay"></div>
                         <div class="slide-inner">
                             <div class="content-box">
-                                <h4 class="slide-title-ui">${slide.title.toUpperCase()}</h4>
-                                <p class="slide-desc-ui">${slide.body}</p>
+                                <h4 class="slide-title-ui">${safeTitle}</h4>
+                                <p class="slide-desc-ui">${safeBody}</p>
                             </div>
                             <div class="slide-footer-ui">
-                                <span class="slide-ig-ui">${ig}</span>
+                                <span class="slide-ig-ui">${escapeHtml(ig)}</span>
                                 <span class="slide-num-ui">${i+1} / ${slidesContent.length}</span>
                             </div>
                         </div>
@@ -247,7 +260,7 @@
                 preview.style.display = 'block';
 
             } catch (err) {
-                console.error(err);
+                console.error("Erro completo:", err);
                 alert("Erro no motor WR-TEC: " + err.message);
                 loader.style.display = 'none';
             } finally {
@@ -255,22 +268,51 @@
             }
         }
 
+        // Função para escapar HTML e evitar XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         async function downloadSlide(element, index) {
-            const canvas = await html2canvas(element, { scale: 2, useCORS: true });
-            const link = document.createElement('a');
-            link.download = `slide-${index}.png`;
-            link.href = canvas.toDataURL("image/png");
-            link.click();
+            try {
+                const canvas = await html2canvas(element, { 
+                    scale: 2, 
+                    useCORS: true,
+                    backgroundColor: '#000'
+                });
+                const link = document.createElement('a');
+                link.download = `slide-${index}.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+            } catch (err) {
+                console.error("Erro ao baixar slide:", err);
+                alert("Erro ao gerar imagem do slide");
+            }
         }
 
         function copyPix() {
             const pixValue = document.getElementById('pix_code').innerText;
-            navigator.clipboard.writeText(pixValue).then(() => { alert("Chave Pix copiada!"); });
+            navigator.clipboard.writeText(pixValue).then(() => { 
+                alert("Chave Pix copiada!"); 
+            }).catch(err => {
+                console.error("Erro ao copiar:", err);
+                alert("Erro ao copiar a chave");
+            });
         }
 
         window.onload = function() {
             const pixData = document.getElementById("pix_code").innerText;
-            new QRCode(document.getElementById("qrcode"), { text: pixData, width: 140, height: 140 });
+            try {
+                new QRCode(document.getElementById("qrcode"), { 
+                    text: pixData, 
+                    width: 140, 
+                    height: 140 
+                });
+            } catch (err) {
+                console.error("Erro ao gerar QR Code:", err);
+            }
         };
     </script>
 </body>
