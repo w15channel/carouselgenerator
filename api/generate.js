@@ -20,12 +20,14 @@ export default async function handler(req, res) {
     // Mudamos para o 2.0 Flash, que é o cavalo de batalha de 2026
     const model = genAI.getGenerativeModel({ 
       model: "gemini-2.0-flash", 
-      generationConfig: { responseMimeType: "application/json" }
+      generationConfig: { 
+        responseMimeType: "application/json" 
+      }
     });
 
     const prompt = `Aja como Copywriter Sênior. Tema: "${topic}". 
     Gere um JSON para carrossel Instagram com ${total} slides. 
-    Formato: { "slides": [ { "title": "TITULO", "body": "corpo" } ] }`;
+    Formato: { "slides": [ { "title": "TITULO EM CAIXA ALTA", "body": "texto do slide" } ] }`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -35,9 +37,9 @@ export default async function handler(req, res) {
     return res.status(200).json(JSON.parse(text));
 
   } catch (error) {
-    console.error("Erro detalhado:", error);
+    console.error("Erro detalhado no motor:", error);
     
-    // Se o erro for 404 de novo, tentamos o fallback automático para o modelo estável v1
+    // Retornamos o erro real para o seu console de debug no site
     return res.status(500).json({ 
       error: "O motor falhou na partida.", 
       details: error.message 
