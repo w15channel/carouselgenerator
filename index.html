@@ -205,9 +205,12 @@
                     throw new Error(errData.error || "Erro na Vercel");
                 }
 
-                const rawData = await response.json();
-                const jsonParsed = JSON.parse(rawData);
-                const slidesContent = jsonParsed.slides;
+                const data = await response.json();
+                const slidesContent = data.slides;
+
+                if (!Array.isArray(slidesContent) || slidesContent.length === 0) {
+                    throw new Error('Resposta da IA sem slides válidos.');
+                }
 
                 const sharedImg = "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop";
 

@@ -20,7 +20,21 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'GEMINI_API_KEY não configurada nas variáveis de ambiente da Vercel.' });
   }
 
-  const { topic, total = 5 } = req.body || {};
+  const body = typeof req.body === 'string'
+    ? (() => {
+        try {
+          return JSON.parse(req.body);
+        } catch {
+          return null;
+        }
+      })()
+    : req.body;
+
+  if (!body || typeof body !== 'object') {
+    return res.status(400).json({ error: 'Body inválido. Envie JSON com "topic" e "total".' });
+  }
+
+  const { topic, total = 5 } = body;
 
   if (!topic || typeof topic !== 'string' || topic.trim().length === 0) {
     return res.status(400).json({ error: 'Campo "topic" é obrigatório.' });
