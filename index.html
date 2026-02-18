@@ -3,528 +3,275 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WR-TEC | Carrosséis de Elite</title>
+    <title>WR-TEC | Design Inteligente de Carrosséis</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=DM+Mono:wght@400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         :root {
-            --bg: #07080a;
-            --surface: #0e1015;
-            --surface2: #13161d;
-            --gold: #c9a84c;
-            --gold-muted: rgba(201, 168, 76, 0.15);
-            --gold-border: rgba(201, 168, 76, 0.25);
-            --text: #f0ede6;
-            --text-dim: #6b7280;
-            --text-faint: rgba(240, 237, 230, 0.25);
-            --border: rgba(255, 255, 255, 0.06);
-            --slide-safe: 52px;
+            --deep: #020406;
+            --surface: #0a0c12;
+            --accent: #c4a661; 
+            --text-high: #f8fafc;
+            --text-low: #64748b;
+            --border: rgba(255, 255, 255, 0.05);
+            --safe-margin: 60px;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        ::selection { background: var(--gold); color: #000; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
 
         body {
-            font-family: 'Syne', sans-serif;
-            background: var(--bg);
-            color: var(--text);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--deep);
+            background-image: radial-gradient(circle at 50% 0%, #151921 0%, #020406 100%);
+            color: var(--text-high);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             min-height: 100vh;
-            overflow-x: hidden;
+            padding: 40px 20px;
         }
 
-        /* Noise overlay */
-        body::before {
-            content: '';
-            position: fixed; inset: 0;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-            pointer-events: none; z-index: 0; opacity: 0.4;
+        .container { max-width: 1000px; width: 100%; }
+
+        header { text-align: center; margin-bottom: 50px; }
+
+        .wr-badge {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: rgba(196, 166, 97, 0.1); border: 1px solid rgba(196, 166, 97, 0.2);
+            color: var(--accent); padding: 8px 18px; border-radius: 100px;
+            font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
+            margin-bottom: 20px;
         }
-
-        .wrap { max-width: 960px; margin: 0 auto; padding: 60px 24px 100px; position: relative; z-index: 1; }
-
-        /* HEADER */
-        header { text-align: center; margin-bottom: 64px; }
-
-        .badge {
-            display: inline-flex; align-items: center; gap: 8px;
-            border: 1px solid var(--gold-border);
-            background: var(--gold-muted);
-            color: var(--gold); padding: 6px 16px; border-radius: 2px;
-            font-family: 'DM Mono', monospace; font-size: 0.65rem;
-            letter-spacing: 3px; text-transform: uppercase;
-            margin-bottom: 28px;
-        }
-
-        .badge .dot { width: 6px; height: 6px; background: var(--gold); border-radius: 50%; animation: blink 2s infinite; }
-        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
 
         h1 {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: clamp(3rem, 7vw, 5.5rem);
-            font-weight: 300;
-            line-height: 0.9;
-            letter-spacing: -2px;
-            color: var(--text);
-            margin-bottom: 16px;
+            font-size: clamp(2.2rem, 5vw, 3.5rem); font-weight: 800; letter-spacing: -2px; line-height: 0.95;
+            margin-bottom: 15px; background: linear-gradient(to bottom, #fff 60%, #94a3b8);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
 
-        h1 em { font-style: italic; color: var(--gold); }
-
-        .sub {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.7rem;
-            color: var(--text-dim);
-            letter-spacing: 2px;
-            text-transform: uppercase;
+        .engine-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 40px; padding: 40px; box-shadow: 0 50px 100px rgba(0,0,0,0.8);
+            margin-bottom: 60px;
         }
 
-        /* CARD */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 40px;
-            position: relative;
-            overflow: hidden;
+        .input-stack { display: flex; flex-direction: column; gap: 25px; margin-bottom: 35px; }
+        .input-box { display: flex; flex-direction: column; gap: 10px; }
+        .input-box label { font-size: 0.7rem; font-weight: 700; color: var(--text-low); text-transform: uppercase; letter-spacing: 1.5px; }
+
+        input, textarea {
+            background: #0d111a; border: 1px solid var(--border); border-radius: 12px;
+            padding: 18px; color: white; font-size: 1rem; font-family: inherit; transition: 0.3s ease;
         }
 
-        .card::before {
-            content: '';
-            position: absolute; top: 0; left: 0; right: 0; height: 1px;
-            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+        textarea { resize: vertical; min-height: 100px; }
+        input:focus, textarea:focus { border-color: var(--accent); outline: none; background: #111521; }
+
+        .btn-run {
+            width: 100%; background: #fff; color: #000; border: none; border-radius: 14px;
+            padding: 20px; font-size: 1.1rem; font-weight: 900; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 2px; display: flex;
+            align-items: center; justify-content: center; gap: 12px; transition: 0.4s;
         }
 
-        /* FORM */
-        .form-grid { display: flex; flex-direction: column; gap: 28px; margin-bottom: 32px; }
+        .btn-run:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(255,255,255,0.1); }
 
-        .field { display: flex; flex-direction: column; gap: 8px; }
+        .preview-area { display: none; margin-top: 60px; width: 100%; }
 
-        .field label {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.62rem; letter-spacing: 2.5px;
-            text-transform: uppercase; color: var(--text-dim);
+        .carousel-track {
+            display: flex; overflow-x: auto; gap: 30px; padding: 10px 0 40px;
+            scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--accent) transparent;
         }
 
-        .field textarea, .field input[type="text"] {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 2px;
-            padding: 16px 18px;
-            color: var(--text);
-            font-family: 'Syne', sans-serif;
-            font-size: 0.95rem;
-            transition: border-color 0.3s;
-            resize: vertical;
-        }
-
-        .field textarea { min-height: 110px; }
-
-        .field textarea:focus, .field input[type="text"]:focus {
-            outline: none;
-            border-color: var(--gold-border);
-            background: var(--surface2);
-        }
-
-        .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-
-        /* RANGE SLIDER */
-        .slider-row { display: flex; align-items: center; gap: 16px; }
-        input[type="range"] {
-            -webkit-appearance: none; flex: 1; height: 2px;
-            background: var(--border); border-radius: 2px; cursor: pointer;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 16px; height: 16px;
-            border-radius: 50%; background: var(--gold); cursor: pointer;
-        }
-        .slider-val {
-            font-family: 'DM Mono', monospace; font-size: 1rem;
-            color: var(--gold); font-weight: 500; min-width: 20px; text-align: center;
-        }
-
-        /* BUTTON */
-        .btn-generate {
-            width: 100%; padding: 20px;
-            background: var(--gold); color: #000;
-            border: none; border-radius: 2px;
-            font-family: 'Syne', sans-serif; font-size: 0.85rem;
-            font-weight: 800; letter-spacing: 3px; text-transform: uppercase;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px;
-            transition: all 0.3s; position: relative; overflow: hidden;
-        }
-
-        .btn-generate::after {
-            content: ''; position: absolute; inset: 0;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-            transform: translateX(-100%); transition: transform 0.5s;
-        }
-        .btn-generate:hover::after { transform: translateX(100%); }
-        .btn-generate:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(201, 168, 76, 0.3); }
-        .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
-
-        /* LOADER */
-        .loader { display: none; flex-direction: column; align-items: center; gap: 20px; margin-top: 40px; padding: 40px; }
-        .loader.active { display: flex; }
-
-        .loader-orbs {
-            display: flex; gap: 10px;
-        }
-        .orb {
-            width: 10px; height: 10px; border-radius: 50%;
-            background: var(--gold); animation: orb-bounce 1.2s infinite ease-in-out;
-        }
-        .orb:nth-child(2) { animation-delay: 0.15s; background: rgba(201,168,76,0.6); }
-        .orb:nth-child(3) { animation-delay: 0.3s; background: rgba(201,168,76,0.3); }
-        @keyframes orb-bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1.1);opacity:1} }
-
-        .loader-text {
-            font-family: 'DM Mono', monospace; font-size: 0.7rem;
-            color: var(--gold); letter-spacing: 3px; text-transform: uppercase;
-        }
-
-        /* ERROR */
-        .error-box {
-            display: none; margin-top: 24px;
-            background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);
-            border-radius: 2px; padding: 16px 20px;
-            font-family: 'DM Mono', monospace; font-size: 0.78rem; color: #f87171;
-        }
-        .error-box.show { display: block; }
-
-        /* PREVIEW */
-        .preview { display: none; margin-top: 60px; }
-        .preview.show { display: block; }
-
-        .preview-header {
-            display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 24px;
-        }
-        .preview-title {
-            font-family: 'DM Mono', monospace; font-size: 0.65rem;
-            color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase;
-        }
-        .slide-count {
-            font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--gold);
-        }
-
-        /* CAROUSEL */
-        .track {
-            display: flex; gap: 20px; overflow-x: auto;
-            scroll-snap-type: x mandatory; padding-bottom: 24px;
-            scrollbar-width: thin; scrollbar-color: var(--gold-border) transparent;
-        }
-
-        .slide-wrapper { display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
-
-        /* THE SLIDE ITSELF */
         .slide-frame {
-            width: 480px; height: 480px;
-            position: relative; overflow: hidden;
-            scroll-snap-align: start;
-            background: #000;
-            flex-shrink: 0;
+            min-width: 500px; width: 500px; height: 500px; aspect-ratio: 1 / 1;
+            position: relative; overflow: hidden; scroll-snap-align: start; flex-shrink: 0;
+            background: #000; border: 1px solid rgba(255,255,255,0.15);
         }
 
-        .slide-bg {
-            position: absolute; inset: 0; width: 100%; height: 100%;
-            object-fit: cover; opacity: 0.35; filter: grayscale(30%);
-        }
+        .slide-bg { width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 1; opacity: 0.4; }
+        .slide-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.9) 100%); }
 
-        .slide-gradient {
-            position: absolute; inset: 0;
-            background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0.85) 100%);
-        }
+        .slide-inner { position: relative; z-index: 3; height: 100%; width: 100%; padding: var(--safe-margin); display: flex; flex-direction: column; justify-content: center; }
+        .slide-title-ui { font-family: 'Playfair Display', serif; font-size: 2.3rem; color: #fff; margin-bottom: 15px; line-height: 1.05; font-weight: 900; text-transform: uppercase; }
+        .slide-desc-ui { font-size: 1.1rem; color: rgba(255, 255, 255, 0.95); line-height: 1.45; font-weight: 400; }
 
-        .slide-content {
-            position: relative; z-index: 2;
-            height: 100%; padding: var(--slide-safe);
-            display: flex; flex-direction: column;
-        }
+        .slide-footer-ui { position: absolute; bottom: var(--safe-margin); left: var(--safe-margin); right: var(--safe-margin); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px; }
+        .slide-ig-ui { font-size: 0.75rem; font-weight: 800; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
+        .slide-num-ui { font-size: 0.8rem; font-weight: 700; color: rgba(255,255,255,0.3); font-family: monospace; }
 
-        .slide-label {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.6rem; letter-spacing: 3px;
-            color: var(--gold); text-transform: uppercase;
-            margin-bottom: auto;
-        }
+        .loader-box { display: none; flex-direction: column; align-items: center; margin: 40px 0; gap: 20px; }
+        .pulse-ai { width: 60px; height: 60px; background: var(--accent); border-radius: 50%; filter: blur(10px); animation: pulse 1.5s infinite alternate; }
+        @keyframes pulse { from { opacity: 0.3; transform: scale(0.8); } to { opacity: 1; transform: scale(1.1); } }
 
-        .slide-title {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 2.4rem; font-weight: 700;
-            color: #fff; line-height: 1.0;
-            margin-bottom: 14px; text-transform: uppercase;
-            letter-spacing: -0.5px;
-        }
+        .download-btn-single { margin-top: 10px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--border); padding: 8px 15px; border-radius: 6px; font-size: 0.7rem; cursor: pointer; font-weight: 700; text-transform: uppercase; }
 
-        .slide-body {
-            font-family: 'Syne', sans-serif;
-            font-size: 0.85rem; line-height: 1.6;
-            color: rgba(255,255,255,0.82);
-            margin-bottom: 28px;
-        }
-
-        .slide-footer {
-            display: flex; align-items: center; justify-content: space-between;
-            border-top: 1px solid rgba(201, 168, 76, 0.3);
-            padding-top: 12px; margin-top: auto;
-        }
-
-        .slide-handle {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.62rem; color: var(--gold);
-            letter-spacing: 2px; text-transform: uppercase;
-        }
-
-        .slide-num {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.62rem; color: rgba(255,255,255,0.2);
-        }
-
-        .slide-corner-decor {
-            position: absolute; top: var(--slide-safe); right: var(--slide-safe);
-            width: 24px; height: 24px; z-index: 3;
-            border-top: 1px solid var(--gold); border-right: 1px solid var(--gold);
-            opacity: 0.4;
-        }
-
-        /* DOWNLOAD BTN */
-        .dl-btn {
-            background: transparent; border: 1px solid var(--border);
-            color: var(--text-dim); padding: 8px 14px; border-radius: 2px;
-            font-family: 'DM Mono', monospace; font-size: 0.6rem;
-            letter-spacing: 1.5px; text-transform: uppercase;
-            cursor: pointer; transition: all 0.2s; width: 100%;
-        }
-        .dl-btn:hover { border-color: var(--gold-border); color: var(--gold); }
-
-        /* DIVIDER */
-        .divider {
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--border), transparent);
-            margin: 60px 0;
-        }
-
-        /* FOOTER */
-        footer { text-align: center; padding-bottom: 40px; position: relative; z-index: 1; }
-        .footer-label {
-            font-family: 'DM Mono', monospace; font-size: 0.6rem;
-            color: var(--text-faint); letter-spacing: 2px; text-transform: uppercase;
-            margin-bottom: 12px;
-        }
-        .footer-name {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 1.5rem; color: var(--text-dim);
-        }
+        footer { margin-top: 100px; text-align: center; border-top: 1px solid var(--border); padding: 60px 20px; }
+        .support-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 32px; padding: 40px; display: inline-block; }
+        #qrcode { background: white; padding: 15px; border-radius: 16px; display: inline-block; margin-bottom: 25px; }
+        .btn-copy-pix { background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 12px 24px; border-radius: 12px; cursor: pointer; font-size: 0.8rem; font-weight: 900; text-transform: uppercase; }
 
         @media (max-width: 600px) {
-            .row-2 { grid-template-columns: 1fr; }
-            .slide-frame { width: calc(100vw - 60px); height: calc(100vw - 60px); }
-            .card { padding: 24px; }
+            .slide-frame { min-width: 100%; height: 400px; }
+            .slide-title-ui { font-size: 1.6rem; }
         }
     </style>
 </head>
 <body>
-    <div class="wrap">
+
+    <div class="container">
         <header>
-            <div class="badge">
-                <span class="dot"></span>
-                WR-TEC &bull; Gemini Powered
-            </div>
-            <h1>Carrosséis<br>de <em>Elite</em></h1>
-            <p class="sub">Geração inteligente via Google Gemini AI</p>
+            <div class="wr-badge"><i class="fa-solid fa-bolt"></i> WR-TEC | GEMINI POWERED</div>
+            <h1>Gerador de<br>Carrosséis de Elite</h1>
+            <p style="color: var(--text-low); font-size: 1.1rem;">Processamento via Google Gemini AI.</p>
         </header>
 
-        <div class="card">
-            <div class="form-grid">
-                <div class="field">
+        <div class="engine-card">
+            <div class="input-stack">
+                <div class="input-box">
                     <label>Briefing do Conteúdo</label>
-                    <textarea id="topic_input" placeholder="Descreva o tema do carrossel. Quanto mais detalhes, melhor o resultado..."></textarea>
+                    <textarea id="topic_input" placeholder="Sobre o que vamos postar hoje?"></textarea>
                 </div>
-
-                <div class="row-2">
-                    <div class="field">
-                        <label>@ Instagram / Assinatura</label>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <div class="input-box">
+                        <label>Assinatura Instagram</label>
                         <input type="text" id="user_handle" value="@seu.perfil">
                     </div>
-                    <div class="field">
-                        <label>Quantidade de Slides — <span id="num_label" style="color: var(--gold)">5</span></label>
-                        <div class="slider-row">
-                            <input type="range" id="num_slides" min="3" max="10" value="5"
-                                oninput="document.getElementById('num_label').innerText = this.value">
-                            <span class="slider-val" id="slider_display">5</span>
-                        </div>
+                    <div class="input-box">
+                        <label>Quantidade de Telas: <span id="num_label">5</span></label>
+                        <input type="range" id="num_slides" min="3" max="10" value="5" oninput="document.getElementById('num_label').innerText = this.value">
                     </div>
                 </div>
             </div>
 
-            <button class="btn-generate" id="run_btn" onclick="generate()">
-                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                Gerar Carrossel
+            <button class="btn-run" onclick="generatePremiumCarousel()" id="run_btn">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Gerar Projeto de Autoridade
             </button>
 
-            <div class="loader" id="loader">
-                <div class="loader-orbs">
-                    <div class="orb"></div><div class="orb"></div><div class="orb"></div>
-                </div>
-                <p class="loader-text">IA Processando Conteúdo...</p>
+            <div class="loader-box" id="loader">
+                <div class="pulse-ai"></div>
+                <p style="color: var(--accent); font-weight: 800; letter-spacing: 2px;">IA PROCESSANDO...</p>
             </div>
 
-            <div class="error-box" id="error_box"></div>
-        </div>
-
-        <div class="preview" id="preview">
-            <div class="preview-header">
-                <span class="preview-title">Preview do Carrossel</span>
-                <span class="slide-count" id="slide_count"></span>
+            <div class="preview-area" id="preview_section">
+                <div class="carousel-track" id="track"></div>
             </div>
-            <div class="track" id="track"></div>
         </div>
-
-        <div class="divider"></div>
 
         <footer>
-            <p class="footer-label">Desenvolvido por</p>
-            <p class="footer-name">William Ribeiro · WR-TEC</p>
+            <div class="support-card">
+                <h3 style="margin-bottom: 20px; font-size: 0.8rem; color: #fff; text-transform: uppercase;">Apoie a WR-TEC</h3>
+                <div id="qrcode"></div>
+                <br>
+                <button class="btn-copy-pix" onclick="copyPix()">Copiar Chave Pix</button>
+                <span id="pix_code" style="display:none">00020126360014BR.GOV.BCB.PIX0114+55419925315985204000053039865802BR5925William Ribeiro dos Santo6009SAO PAULO62140510C7I0x49TlI6304D49A</span>
+            </div>
         </footer>
     </div>
 
     <script>
-        // Sync slider display
-        const slider = document.getElementById('num_slides');
-        const sliderDisplay = document.getElementById('slider_display');
-        slider.oninput = function() {
-            document.getElementById('num_label').innerText = this.value;
-            sliderDisplay.innerText = this.value;
-        };
-
-        // Background images pool (free Unsplash photos)
-        const BG_IMAGES = [
-            'https://images.unsplash.com/photo-1557804506-669a67965ba0?q=80&w=800',
-            'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=800',
-            'https://images.unsplash.com/photo-1493612276216-ee3925520721?q=80&w=800',
-            'https://images.unsplash.com/photo-1507679799987-c73779587ccf?q=80&w=800',
-            'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=800',
-        ];
-
-        function getBg(index) {
-            return BG_IMAGES[index % BG_IMAGES.length];
-        }
-
-        async function generate() {
-            const topic = document.getElementById('topic_input').value.trim();
-            const handle = document.getElementById('user_handle').value.trim() || '@seu.perfil';
+        async function generatePremiumCarousel() {
+            const topic = document.getElementById('topic_input').value;
+            const ig = document.getElementById('user_handle').value;
             const total = parseInt(document.getElementById('num_slides').value);
-            const errorBox = document.getElementById('error_box');
-            const loader = document.getElementById('loader');
-            const preview = document.getElementById('preview');
-            const track = document.getElementById('track');
+            
+            if(!topic) { alert("O briefing é necessário!"); return; }
+
             const btn = document.getElementById('run_btn');
+            const loader = document.getElementById('loader');
+            const preview = document.getElementById('preview_section');
+            const track = document.getElementById('track');
 
-            if (!topic) { showError('Por favor, preencha o briefing do conteúdo.'); return; }
-
-            // Reset UI
-            errorBox.className = 'error-box';
-            preview.className = 'preview';
-            track.innerHTML = '';
             btn.disabled = true;
-            loader.classList.add('active');
+            loader.style.display = 'flex';
+            preview.style.display = 'none';
+            track.innerHTML = '';
 
             try {
-                const res = await fetch('/api/generate', {
+                const response = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ topic, total })
                 });
 
-                const ct = res.headers.get('content-type') || '';
-                if (!res.ok || !ct.includes('application/json')) {
-                    const txt = await res.text();
-                    throw new Error(`Erro do servidor (${res.status}): ${txt.slice(0, 200)}`);
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || "Erro na Vercel");
                 }
 
-                const data = await res.json();
+                const rawData = await response.json();
+                const jsonParsed = JSON.parse(rawData);
+                const slidesContent = jsonParsed.slides;
 
-                // Handle nested JSON string (Gemini sometimes returns a stringified JSON)
-                let slides = data.slides;
-                if (!slides && typeof data === 'string') {
-                    slides = JSON.parse(data).slides;
-                }
-                if (!Array.isArray(slides) || slides.length === 0) {
-                    throw new Error('Resposta inválida da IA. Tente novamente.');
-                }
+                const sharedImg = "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop";
 
-                // Render slides
-                slides.forEach((slide, i) => {
+                slidesContent.forEach((slide, i) => {
                     const wrapper = document.createElement('div');
                     wrapper.className = 'slide-wrapper';
 
                     const frame = document.createElement('div');
                     frame.className = 'slide-frame';
+                    frame.id = `frame-${i}`;
                     frame.innerHTML = `
-                        <img class="slide-bg" src="${getBg(i)}" crossorigin="anonymous" alt="">
-                        <div class="slide-gradient"></div>
-                        <div class="slide-corner-decor"></div>
-                        <div class="slide-content">
-                            <span class="slide-label">0${i + 1}</span>
-                            <h2 class="slide-title">${escHtml(slide.title)}</h2>
-                            <p class="slide-body">${escHtml(slide.body)}</p>
-                            <div class="slide-footer">
-                                <span class="slide-handle">${escHtml(handle)}</span>
-                                <span class="slide-num">${i + 1} / ${slides.length}</span>
+                        <img src="${sharedImg}" class="slide-bg">
+                        <div class="slide-overlay"></div>
+                        <div class="slide-inner">
+                            <div class="content-box">
+                                <h4 class="slide-title-ui">${slide.title.toUpperCase()}</h4>
+                                <p class="slide-desc-ui">${slide.body}</p>
+                            </div>
+                            <div class="slide-footer-ui">
+                                <span class="slide-ig-ui">${ig}</span>
+                                <span class="slide-num-ui">${i+1} / ${slidesContent.length}</span>
                             </div>
                         </div>
                     `;
 
-                    const dlBtn = document.createElement('button');
-                    dlBtn.className = 'dl-btn';
-                    dlBtn.innerHTML = '<i class="fa-solid fa-download"></i> Salvar PNG';
-                    dlBtn.onclick = () => downloadSlide(frame, i + 1);
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.className = 'download-btn-single';
+                    downloadBtn.innerHTML = `<i class="fa-solid fa-camera"></i> Salvar PNG`;
+                    downloadBtn.onclick = () => downloadSlide(frame, i+1);
 
                     wrapper.appendChild(frame);
-                    wrapper.appendChild(dlBtn);
+                    wrapper.appendChild(downloadBtn);
                     track.appendChild(wrapper);
                 });
 
-                document.getElementById('slide_count').innerText = `${slides.length} slides`;
-                preview.classList.add('show');
+                loader.style.display = 'none';
+                preview.style.display = 'block';
 
             } catch (err) {
-                showError(err.message);
+                console.error(err);
+                alert("Erro no motor WR-TEC: " + err.message);
+                loader.style.display = 'none';
             } finally {
-                loader.classList.remove('active');
                 btn.disabled = false;
             }
         }
 
-        function showError(msg) {
-            const box = document.getElementById('error_box');
-            box.innerText = '⚠ ' + msg;
-            box.classList.add('show');
+        async function downloadSlide(element, index) {
+            const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+            const link = document.createElement('a');
+            link.download = `slide-${index}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
         }
 
-        function escHtml(str) {
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
+        function copyPix() {
+            const pixValue = document.getElementById('pix_code').innerText;
+            navigator.clipboard.writeText(pixValue).then(() => { alert("Chave Pix copiada!"); });
         }
 
-        async function downloadSlide(el, num) {
-            try {
-                const canvas = await html2canvas(el, { scale: 2, useCORS: true, allowTaint: false });
-                const a = document.createElement('a');
-                a.download = `slide-${num}.png`;
-                a.href = canvas.toDataURL('image/png');
-                a.click();
-            } catch(e) {
-                alert('Erro ao salvar: ' + e.message);
-            }
-        }
+        window.onload = function() {
+            const pixData = document.getElementById("pix_code").innerText;
+            new QRCode(document.getElementById("qrcode"), { text: pixData, width: 140, height: 140 });
+        };
     </script>
 </body>
 </html>
