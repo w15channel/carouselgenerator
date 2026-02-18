@@ -5,7 +5,7 @@
   "main": "api/generate.js",
   "scripts": {
     "dev": "vercel dev",
-    "build": "echo 'No build needed for serverless'",
+    "build": "mkdir -p public && cp index.html public/",
     "start": "vercel dev"
   },
   "keywords": [
