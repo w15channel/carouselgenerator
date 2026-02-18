@@ -110,6 +110,27 @@
         .pulse-ai { width: 60px; height: 60px; background: var(--accent); border-radius: 50%; filter: blur(10px); animation: pulse 1.5s infinite alternate; }
         @keyframes pulse { from { opacity: 0.3; transform: scale(0.8); } to { opacity: 1; transform: scale(1.1); } }
 
+        .debug-box {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 100, 100, 0.5);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            font-family: 'Courier New', monospace;
+            color: #ff6464;
+        }
+
+        .debug-box.show { display: block; }
+        .debug-box.success {
+            background: rgba(0, 255, 0, 0.1);
+            border-color: rgba(100, 255, 100, 0.5);
+            color: #64ff64;
+        }
+
         .download-btn-single { margin-top: 10px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--border); padding: 8px 15px; border-radius: 6px; font-size: 0.7rem; cursor: pointer; font-weight: 700; text-transform: uppercase; }
 
         footer { margin-top: 100px; text-align: center; border-top: 1px solid var(--border); padding: 60px 20px; }
@@ -160,6 +181,12 @@
                 <p style="color: var(--accent); font-weight: 800; letter-spacing: 2px;">IA PROCESSANDO...</p>
             </div>
 
+            <!-- DEBUG BOX -->
+            <div class="debug-box" id="debugBox">
+                <strong>🔍 Debug Console:</strong><br>
+                <div id="debugOutput"></div>
+            </div>
+
             <div class="preview-area" id="preview_section">
                 <div class="carousel-track" id="track"></div>
             </div>
@@ -177,15 +204,46 @@
     </div>
 
     <script>
+        // Sistema de debug melhorado
+        const debugBox = document.getElementById('debugBox');
+        const debugOutput = document.getElementById('debugOutput');
+        let debugLogs = [];
+
+        function addDebugLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            debugLogs.push(logEntry);
+            
+            const color = type === 'error' ? '❌' : type === 'success' ? '✅' : '📝';
+            debugOutput.innerHTML += `${color} ${logEntry}<br>`;
+            debugOutput.scrollTop = debugOutput.scrollHeight;
+        }
+
+        function showDebugBox(isError = false) {
+            debugBox.classList.toggle('show', true);
+            debugBox.classList.toggle('success', !isError);
+        }
+
         async function generatePremiumCarousel() {
             const topic = document.getElementById('topic_input').value;
             const ig = document.getElementById('user_handle').value;
             const total = parseInt(document.getElementById('num_slides').value);
             
+            // Limpar debug box
+            debugLogs = [];
+            debugOutput.innerHTML = '';
+            
+            addDebugLog('Iniciando geração de carrossel...', 'info');
+            
             if(!topic) { 
+                addDebugLog('ERRO: Briefing vazio!', 'error');
                 alert("O briefing é necessário!"); 
                 return; 
             }
+
+            addDebugLog(`Topic: "${topic}"`, 'info');
+            addDebugLog(`Total de slides: ${total}`, 'info');
+            addDebugLog(`Instagram: ${ig}`, 'info');
 
             const btn = document.getElementById('run_btn');
             const loader = document.getElementById('loader');
@@ -198,28 +256,45 @@
             track.innerHTML = '';
 
             try {
+                addDebugLog('Enviando requisição para /api/generate...', 'info');
+                showDebugBox(false);
+
                 const response = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ topic, total })
                 });
 
+                addDebugLog(`Response status: ${response.status}`, 'info');
+
                 if (!response.ok) {
+                    addDebugLog(`HTTP Error: ${response.status}`, 'error');
                     const errData = await response.json();
-                    throw new Error(errData.error || "Erro na API");
+                    addDebugLog(`Erro da API: ${JSON.stringify(errData, null, 2)}`, 'error');
+                    throw new Error(errData.error || `HTTP ${response.status}`);
                 }
 
-                // AQUI ESTÁ A CORREÇÃO: response.json() já retorna um objeto parseado
+                addDebugLog('Resposta OK recebida', 'success');
                 const slidesData = await response.json();
+                
+                addDebugLog(`Response type: ${typeof slidesData}`, 'info');
+                addDebugLog(`Response keys: ${Object.keys(slidesData).join(', ')}`, 'info');
+
                 const slidesContent = slidesData.slides;
 
                 if (!slidesContent || !Array.isArray(slidesContent)) {
+                    addDebugLog('ERRO: Formato de resposta inválido', 'error');
+                    addDebugLog(`Esperado: array "slides", Recebido: ${typeof slidesContent}`, 'error');
                     throw new Error("Formato de resposta inválido");
                 }
+
+                addDebugLog(`✅ ${slidesContent.length} slides recebidos`, 'success');
 
                 const sharedImg = "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop";
 
                 slidesContent.forEach((slide, i) => {
+                    addDebugLog(`Renderizando slide ${i + 1}/${slidesContent.length}`, 'info');
+                    
                     const wrapper = document.createElement('div');
                     wrapper.className = 'slide-wrapper';
 
@@ -227,7 +302,6 @@
                     frame.className = 'slide-frame';
                     frame.id = `frame-${i}`;
                     
-                    // Escapar caracteres especiais no HTML
                     const safeTitle = escapeHtml(slide.title);
                     const safeBody = escapeHtml(slide.body);
                     
@@ -256,19 +330,22 @@
                     track.appendChild(wrapper);
                 });
 
+                addDebugLog('✅ Todos os slides renderizados com sucesso!', 'success');
                 loader.style.display = 'none';
                 preview.style.display = 'block';
 
             } catch (err) {
+                addDebugLog(`❌ ERRO: ${err.message}`, 'error');
+                addDebugLog(`Stack: ${err.stack}`, 'error');
                 console.error("Erro completo:", err);
                 alert("Erro no motor WR-TEC: " + err.message);
+                showDebugBox(true);
                 loader.style.display = 'none';
             } finally {
                 btn.disabled = false;
             }
         }
 
-        // Função para escapar HTML e evitar XSS
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
