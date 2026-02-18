@@ -255,8 +255,6 @@
                 }
 
                 const slidesContent = data.slides;
-                const data = await response.json();
-                const slidesContent = data.slides;
 
                 step.textContent = 'Montando o carrossel...';
 
@@ -272,7 +270,6 @@
                     frame.className = 'slide-frame';
                     frame.id = `frame-${i}`;
                     frame.innerHTML = `
-                        <img src="${slide.image}" class="slide-bg">
                         <img src="${imgSrc}" class="slide-bg" crossorigin="anonymous">
                         <div class="slide-overlay"></div>
                         ${isAiImage ? '<span class="slide-ai-badge"><i class="fa-solid fa-microchip"></i> AI IMAGE</span>' : ''}
