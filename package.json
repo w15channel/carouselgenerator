@@ -1,7 +1,7 @@
 {
   "name": "wr-tec-carousel",
   "version": "1.0.0",
-  "description": "Gerador de Carrosséis de Elite com Hugging Face Inference API — WR-TEC",
+  "description": "Gerador de Carrosséis de Elite com Google Gemini API — WR-TEC",
   "private": true,
   "scripts": {
     "dev": "vercel dev",
@@ -11,6 +11,6 @@
     "node": "20.x"
   },
   "dependencies": {
-    "@huggingface/inference": "^4.8.0"
+    "@google/genai": "^0.12.0"
   }
 }

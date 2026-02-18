@@ -122,6 +122,7 @@
 
         .slide-footer-ui { position: absolute; bottom: var(--safe-margin); left: var(--safe-margin); right: var(--safe-margin); display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px; }
         .slide-ig-ui { font-size: 0.75rem; font-weight: 800; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
+        .slide-whatsapp-ui { font-size: 0.72rem; font-weight: 700; color: #25D366; letter-spacing: 0.5px; }
         .slide-num-ui { font-size: 0.8rem; font-weight: 700; color: rgba(255,255,255,0.3); font-family: monospace; }
 
         /* Badge indicando imagem gerada por IA */
@@ -155,10 +156,10 @@
 
     <div class="container">
         <header>
-            <div class="wr-badge"><i class="fa-solid fa-bolt"></i> WR-TEC | HUGGING FACE POWERED</div>
+            <div class="wr-badge"><i class="fa-solid fa-bolt"></i> WR-TEC | GEMINI POWERED</div>
             <h1>Gerador de<br>Carrosséis de Elite</h1>
-            <p style="color: var(--text-low); font-size: 1.1rem;">Processamento via Hugging Face Inference API.</p>
-            <p style="color: var(--text-low); font-size: 1.1rem;">Texto + Imagens gerados por IA via Hugging Face.</p>
+            <p style="color: var(--text-low); font-size: 1.1rem;">Processamento via Google Gemini API.</p>
+            <p style="color: var(--text-low); font-size: 1.1rem;">Texto + Imagens gerados por IA via Gemini.</p>
         </header>
 
         <div class="engine-card">
@@ -173,6 +174,13 @@
                         <label>Assinatura Instagram</label>
                         <input type="text" id="user_handle" value="@seu.perfil">
                     </div>
+                    <div class="input-box">
+                        <label>WhatsApp (opcional)</label>
+                        <input type="text" id="whatsapp_number" value="(41) 99999-9999">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr; gap: 30px; margin-top: 20px;">
                     <div class="input-box">
                         <label>Quantidade de Telas: <span id="num_label">5</span></label>
                         <input type="range" id="num_slides" min="3" max="10" value="5" oninput="document.getElementById('num_label').innerText = this.value">
@@ -213,6 +221,7 @@
         async function generatePremiumCarousel() {
             const topic = document.getElementById('topic_input').value;
             const ig    = document.getElementById('user_handle').value;
+            const whatsapp = document.getElementById('whatsapp_number').value.trim();
             const total = parseInt(document.getElementById('num_slides').value);
             
             if (!topic) { alert("O briefing é necessário!"); return; }
@@ -255,8 +264,6 @@
                 }
 
                 const slidesContent = data.slides;
-                const data = await response.json();
-                const slidesContent = data.slides;
 
                 step.textContent = 'Montando o carrossel...';
 
@@ -272,7 +279,6 @@
                     frame.className = 'slide-frame';
                     frame.id = `frame-${i}`;
                     frame.innerHTML = `
-                        <img src="${slide.image}" class="slide-bg">
                         <img src="${imgSrc}" class="slide-bg" crossorigin="anonymous">
                         <div class="slide-overlay"></div>
                         ${isAiImage ? '<span class="slide-ai-badge"><i class="fa-solid fa-microchip"></i> AI IMAGE</span>' : ''}
@@ -282,7 +288,10 @@
                                 <p class="slide-desc-ui">${slide.body}</p>
                             </div>
                             <div class="slide-footer-ui">
-                                <span class="slide-ig-ui">${ig}</span>
+                                <div style="display:flex; flex-direction:column; gap:6px;">
+                                    <span class="slide-ig-ui">${ig}</span>
+                                    ${whatsapp ? `<span class="slide-whatsapp-ui"><i class="fa-brands fa-whatsapp"></i> ${whatsapp}</span>` : ""}
+                                </div>
                                 <span class="slide-num-ui">${i + 1} / ${slidesContent.length}</span>
                             </div>
                         </div>
