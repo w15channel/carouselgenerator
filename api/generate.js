@@ -1,5 +1,44 @@
 // api/generate.js
-// Vercel Serverless Function — Google Gemini AI
+// Vercel Serverless Function — Hugging Face Inference API (with local fallback)
+
+function buildFallbackSlides(topic, total) {
+  const safeTopic = String(topic || '').trim();
+
+  const base = [
+    {
+      title: `Por que ${safeTopic} importa`,
+      body: `Se você ignora ${safeTopic}, perde eficiência e resultado. Este carrossel vai direto ao ponto com ações práticas para aplicar hoje.`
+    },
+    {
+      title: 'Erro comum que trava tudo',
+      body: `A maioria começa sem objetivo e sem métrica. Em ${safeTopic}, isso gera retrabalho e baixa consistência nos resultados.`
+    },
+    {
+      title: 'Estratégia simples e forte',
+      body: `Defina um objetivo claro, uma rotina curta e um indicador principal. Isso dá foco e acelera progresso em ${safeTopic}.`
+    },
+    {
+      title: 'Plano de execução em 3 passos',
+      body: `1) Diagnóstico rápido. 2) Priorização do que gera impacto. 3) Revisão semanal para ajustar rota sem perder ritmo.`
+    },
+    {
+      title: 'Comece hoje mesmo',
+      body: `Escolha uma ação prática agora e execute em 24h. Salve este conteúdo e compartilhe com alguém que precisa destravar ${safeTopic}.`
+    }
+  ];
+
+  if (total <= base.length) return base.slice(0, total);
+
+  const extended = [...base];
+  while (extended.length < total) {
+    extended.splice(extended.length - 1, 0, {
+      title: `Aplique em ${safeTopic}`,
+      body: `Transforme teoria em rotina com constância. Pequenas melhorias frequentes em ${safeTopic} vencem grandes planos nunca executados.`
+    });
+  }
+
+  return extended.slice(0, total);
+}
 
 module.exports = async function handler(req, res) {
   // CORS headers (for local dev)
@@ -15,18 +54,21 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido. Use POST.' });
   }
 
-  const API_KEY = process.env.GEMINI_API_KEY;
-  if (!API_KEY) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY não configurada nas variáveis de ambiente da Vercel.' });
-  }
-
   const { topic, total = 5 } = req.body || {};
 
   if (!topic || typeof topic !== 'string' || topic.trim().length === 0) {
     return res.status(400).json({ error: 'Campo "topic" é obrigatório.' });
   }
 
-  const numSlides = Math.min(Math.max(parseInt(total) || 5, 3), 10);
+  const numSlides = Math.min(Math.max(parseInt(total, 10) || 5, 3), 10);
+  const HF_TOKEN = process.env.HF_TOKEN || process.env.HUGGINGFACE_API_KEY || process.env.HF_API_KEY;
+
+  if (!HF_TOKEN) {
+    return res.status(200).json({
+      slides: buildFallbackSlides(topic, numSlides),
+      warning: 'HF token ausente. Conteúdo gerado em modo local (fallback). Configure HF_TOKEN para usar IA externa.'
+    });
+  }
 
   const prompt = `
 Você é um estrategista de conteúdo especialista em criar carrosséis virais para Instagram.
@@ -52,62 +94,80 @@ FORMATO EXATO DE RESPOSTA (sem nenhum caractere fora deste JSON):
 `.trim();
 
   try {
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.8,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 2048,
+    const hfRes = await fetch('https://router.huggingface.co/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${HF_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        provider: 'nebius',
+        model: 'Qwen/Qwen2.5-72B-Instruct',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você responde sempre com JSON válido e sem markdown.',
           },
-        }),
-      }
-    );
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.8,
+        max_tokens: 2048,
+      }),
+    });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      console.error('Gemini API error:', errText);
-      return res.status(502).json({ error: `Erro na API Gemini (${geminiRes.status}).` });
+    if (!hfRes.ok) {
+      const errText = await hfRes.text();
+      console.error('Hugging Face API error:', errText);
+      return res.status(200).json({
+        slides: buildFallbackSlides(topic, numSlides),
+        warning: `Falha na Hugging Face (${hfRes.status}). Conteúdo gerado em modo local (fallback).`
+      });
     }
 
-    const geminiData = await geminiRes.json();
-
-    // Extract text from Gemini response
-    const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const hfData = await hfRes.json();
+    const rawText = hfData?.choices?.[0]?.message?.content;
 
     if (!rawText) {
-      console.error('Gemini response structure unexpected:', JSON.stringify(geminiData));
-      return res.status(502).json({ error: 'Resposta inesperada da Gemini. Sem conteúdo gerado.' });
+      console.error('Hugging Face response structure unexpected:', JSON.stringify(hfData));
+      return res.status(200).json({
+        slides: buildFallbackSlides(topic, numSlides),
+        warning: 'Resposta inesperada da Hugging Face. Conteúdo gerado em modo local (fallback).'
+      });
     }
 
-    // Strip any potential markdown code fences Gemini might add despite instructions
+    // Strip any potential markdown code fences
     const cleaned = rawText
       .replace(/```json\s*/gi, '')
       .replace(/```\s*/gi, '')
       .trim();
 
-    // Validate it's parseable JSON
     let parsed;
     try {
       parsed = JSON.parse(cleaned);
     } catch (parseErr) {
       console.error('JSON parse error. Raw text was:', rawText);
-      return res.status(502).json({ error: 'A IA retornou um formato inválido. Tente novamente.' });
+      return res.status(200).json({
+        slides: buildFallbackSlides(topic, numSlides),
+        warning: 'A IA retornou formato inválido. Conteúdo gerado em modo local (fallback).'
+      });
     }
 
     if (!parsed.slides || !Array.isArray(parsed.slides)) {
-      return res.status(502).json({ error: 'Formato de slides ausente na resposta da IA.' });
+      return res.status(200).json({
+        slides: buildFallbackSlides(topic, numSlides),
+        warning: 'Formato de slides ausente na resposta da IA. Conteúdo gerado em modo local (fallback).'
+      });
     }
 
     return res.status(200).json({ slides: parsed.slides });
-
   } catch (err) {
     console.error('Internal error:', err);
-    return res.status(500).json({ error: 'Erro interno no servidor: ' + err.message });
+    return res.status(200).json({
+      slides: buildFallbackSlides(topic, numSlides),
+      warning: 'Erro interno ao acessar IA externa. Conteúdo gerado em modo local (fallback).'
+    });
   }
-}
+};
