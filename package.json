@@ -1,8 +1,13 @@
 {
   "name": "wr-tec-carousel",
   "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "@google/generative-ai": "^0.21.0"
+  "description": "Gerador de Carrosséis de Elite com Google Gemini AI — WR-TEC",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "engines": {
+    "node": ">=18.x"
   }
 }
