@@ -200,12 +200,24 @@
                     body: JSON.stringify({ topic, total })
                 });
 
-                if (!response.ok) {
-                    const errData = await response.json();
-                    throw new Error(errData.error || "Erro na Vercel");
+                const rawText = await response.text();
+                let data;
+
+                try {
+                    data = JSON.parse(rawText);
+                } catch {
+                    const previewText = rawText ? rawText.slice(0, 180) : 'sem resposta';
+                    throw new Error(`Resposta inválida da API (não é JSON): ${previewText}`);
                 }
 
-                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || `Erro na Vercel (${response.status})`);
+                }
+
+                if (!data.slides || !Array.isArray(data.slides)) {
+                    throw new Error('Resposta da API sem campo slides válido.');
+                }
+
                 const slidesContent = data.slides;
 
                 slidesContent.forEach((slide, i) => {
