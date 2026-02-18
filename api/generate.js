@@ -1,72 +1,32 @@
 // api/generate.js
-// Vercel Serverless Function — Hugging Face Inference API (with local fallback)
+// Vercel Serverless Function — Hugging Face Inference API
 
-function buildFallbackSlides(topic, total) {
-  const safeTopic = String(topic || '').trim();
+async function generateSlideImage({ topic, slideTitle, slideBody, hfToken }) {
+  const { InferenceClient } = await import('@huggingface/inference');
+  const client = new InferenceClient(hfToken);
 
-  const base = [
-    {
-      title: `Por que ${safeTopic} importa`,
-      body: `Se você ignora ${safeTopic}, perde eficiência e resultado. Este carrossel vai direto ao ponto com ações práticas para aplicar hoje.`
-    },
-    {
-      title: 'Erro comum que trava tudo',
-      body: `A maioria começa sem objetivo e sem métrica. Em ${safeTopic}, isso gera retrabalho e baixa consistência nos resultados.`
-    },
-    {
-      title: 'Estratégia simples e forte',
-      body: `Defina um objetivo claro, uma rotina curta e um indicador principal. Isso dá foco e acelera progresso em ${safeTopic}.`
-    },
-    {
-      title: 'Plano de execução em 3 passos',
-      body: `1) Diagnóstico rápido. 2) Priorização do que gera impacto. 3) Revisão semanal para ajustar rota sem perder ritmo.`
-    },
-    {
-      title: 'Comece hoje mesmo',
-      body: `Escolha uma ação prática agora e execute em 24h. Salve este conteúdo e compartilhe com alguém que precisa destravar ${safeTopic}.`
-    }
-  ];
+  const imagePrompt = [
+    `Instagram carousel background about: ${topic}`,
+    `Slide focus: ${slideTitle}`,
+    `Context: ${slideBody}`,
+    'Style: cinematic, premium, editorial lighting, high detail',
+    'No text, no letters, no logos, no watermark'
+  ].join('. ');
 
-  if (total <= base.length) return base.slice(0, total);
+  const imageBlob = await client.textToImage({
+    provider: 'fal-ai',
+    model: 'stabilityai/stable-diffusion-3.5-large',
+    inputs: imagePrompt,
+    parameters: { num_inference_steps: 5 },
+  });
 
-  const extended = [...base];
-  while (extended.length < total) {
-    extended.splice(extended.length - 1, 0, {
-      title: `Aplique em ${safeTopic}`,
-      body: `Transforme teoria em rotina com constância. Pequenas melhorias frequentes em ${safeTopic} vencem grandes planos nunca executados.`
-    });
-  }
-
-  return extended.slice(0, total);
-}
-
-
-async function generateSlideImage(topic, hfToken) {
-  try {
-    const { InferenceClient } = await import('@huggingface/inference');
-    const client = new InferenceClient(hfToken);
-
-    const prompt = `Cinematic editorial background for an Instagram carousel about: ${topic}. No text, no logos, modern and premium style.`;
-
-    const imageBlob = await client.textToImage({
-      provider: 'fal-ai',
-      model: 'stabilityai/stable-diffusion-3.5-large',
-      inputs: prompt,
-      parameters: { num_inference_steps: 5 },
-    });
-
-    const buffer = Buffer.from(await imageBlob.arrayBuffer());
-    const base64 = buffer.toString('base64');
-    const mime = imageBlob.type || 'image/png';
-    return `data:${mime};base64,${base64}`;
-  } catch (err) {
-    console.error('Image generation error:', err?.message || err);
-    return null;
-  }
+  const buffer = Buffer.from(await imageBlob.arrayBuffer());
+  const base64 = buffer.toString('base64');
+  const mime = imageBlob.type || 'image/png';
+  return `data:${mime};base64,${base64}`;
 }
 
 module.exports = async function handler(req, res) {
-  // CORS headers (for local dev)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -85,16 +45,14 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Campo "topic" é obrigatório.' });
   }
 
-  const numSlides = Math.min(Math.max(parseInt(total, 10) || 5, 3), 10);
   const HF_TOKEN = process.env.HF_TOKEN || process.env.HUGGINGFACE_API_KEY || process.env.HF_API_KEY;
-
   if (!HF_TOKEN) {
-    return res.status(200).json({
-      slides: buildFallbackSlides(topic, numSlides),
-      image: null,
-      warning: 'HF token ausente. Conteúdo gerado em modo local (fallback). Configure HF_TOKEN para usar IA externa.'
+    return res.status(500).json({
+      error: 'HF_TOKEN não configurada nas variáveis de ambiente da Vercel.',
     });
   }
+
+  const numSlides = Math.min(Math.max(parseInt(total, 10) || 5, 3), 10);
 
   const prompt = `
 Você é um estrategista de conteúdo especialista em criar carrosséis virais para Instagram.
@@ -146,27 +104,18 @@ FORMATO EXATO DE RESPOSTA (sem nenhum caractere fora deste JSON):
 
     if (!hfRes.ok) {
       const errText = await hfRes.text();
-      console.error('Hugging Face API error:', errText);
-      return res.status(200).json({
-        slides: buildFallbackSlides(topic, numSlides),
-        image: null,
-        warning: `Falha na Hugging Face (${hfRes.status}). Conteúdo gerado em modo local (fallback).`
-      });
+      console.error('Hugging Face text API error:', errText);
+      return res.status(502).json({ error: `Erro na API Hugging Face (${hfRes.status}).` });
     }
 
     const hfData = await hfRes.json();
     const rawText = hfData?.choices?.[0]?.message?.content;
 
     if (!rawText) {
-      console.error('Hugging Face response structure unexpected:', JSON.stringify(hfData));
-      return res.status(200).json({
-        slides: buildFallbackSlides(topic, numSlides),
-        image: null,
-        warning: 'Resposta inesperada da Hugging Face. Conteúdo gerado em modo local (fallback).'
-      });
+      console.error('Hugging Face text response unexpected:', JSON.stringify(hfData));
+      return res.status(502).json({ error: 'Resposta inesperada da Hugging Face (texto).' });
     }
 
-    // Strip any potential markdown code fences
     const cleaned = rawText
       .replace(/```json\s*/gi, '')
       .replace(/```\s*/gi, '')
@@ -175,35 +124,36 @@ FORMATO EXATO DE RESPOSTA (sem nenhum caractere fora deste JSON):
     let parsed;
     try {
       parsed = JSON.parse(cleaned);
-    } catch (parseErr) {
-      console.error('JSON parse error. Raw text was:', rawText);
-      return res.status(200).json({
-        slides: buildFallbackSlides(topic, numSlides),
-        image: null,
-        warning: 'A IA retornou formato inválido. Conteúdo gerado em modo local (fallback).'
+    } catch {
+      return res.status(502).json({ error: 'A IA retornou JSON inválido para os slides.' });
+    }
+
+    if (!parsed.slides || !Array.isArray(parsed.slides) || parsed.slides.length === 0) {
+      return res.status(502).json({ error: 'Formato de slides ausente na resposta da IA.' });
+    }
+
+    const slidesWithImages = [];
+    for (const slide of parsed.slides) {
+      const image = await generateSlideImage({
+        topic: topic.trim(),
+        slideTitle: slide.title,
+        slideBody: slide.body,
+        hfToken: HF_TOKEN,
+      });
+
+      if (!image) {
+        return res.status(502).json({ error: 'Falha ao gerar imagem para os slides.' });
+      }
+
+      slidesWithImages.push({
+        ...slide,
+        image,
       });
     }
 
-    if (!parsed.slides || !Array.isArray(parsed.slides)) {
-      return res.status(200).json({
-        slides: buildFallbackSlides(topic, numSlides),
-        image: null,
-        warning: 'Formato de slides ausente na resposta da IA. Conteúdo gerado em modo local (fallback).'
-      });
-    }
-
-    const image = await generateSlideImage(topic.trim(), HF_TOKEN);
-    return res.status(200).json({
-      slides: parsed.slides,
-      image,
-      warning: image ? undefined : 'Não foi possível gerar imagem com Hugging Face. Usando imagem padrão.'
-    });
+    return res.status(200).json({ slides: slidesWithImages });
   } catch (err) {
     console.error('Internal error:', err);
-    return res.status(200).json({
-      slides: buildFallbackSlides(topic, numSlides),
-      image: null,
-      warning: 'Erro interno ao acessar IA externa. Conteúdo gerado em modo local (fallback).'
-    });
+    return res.status(500).json({ error: 'Erro interno no servidor: ' + err.message });
   }
 };

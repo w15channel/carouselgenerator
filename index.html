@@ -208,13 +208,6 @@
                 const data = await response.json();
                 const slidesContent = data.slides;
 
-                if (data.warning) {
-                    console.warn('WR-TEC warning:', data.warning);
-                    alert(data.warning);
-                }
-
-                const sharedImg = data.image || "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop";
-
                 slidesContent.forEach((slide, i) => {
                     const wrapper = document.createElement('div');
                     wrapper.className = 'slide-wrapper';
@@ -223,7 +216,7 @@
                     frame.className = 'slide-frame';
                     frame.id = `frame-${i}`;
                     frame.innerHTML = `
-                        <img src="${sharedImg}" class="slide-bg">
+                        <img src="${slide.image}" class="slide-bg">
                         <div class="slide-overlay"></div>
                         <div class="slide-inner">
                             <div class="content-box">
