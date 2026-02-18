@@ -14,8 +14,8 @@ async function generateSlideImage({ topic, slideTitle, slideBody, hfToken }) {
   ].join('. ');
 
   const imageBlob = await client.textToImage({
-    provider: 'nscale',
-    model: 'stabilityai/stable-diffusion-xl-base-1.0',
+    provider: 'fal-ai',
+    model: 'Tongyi-MAI/Z-Image-Turbo',
     inputs: prompt,
     parameters: { num_inference_steps: 5 },
   });
