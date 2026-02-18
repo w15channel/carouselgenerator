@@ -80,6 +80,7 @@
         }
 
         .btn-run:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(255,255,255,0.1); }
+        .btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
         .preview-area { display: none; margin-top: 60px; width: 100%; }
 
@@ -88,14 +89,32 @@
             scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--accent) transparent;
         }
 
+        .slide-wrapper { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
         .slide-frame {
             min-width: 500px; width: 500px; height: 500px; aspect-ratio: 1 / 1;
             position: relative; overflow: hidden; scroll-snap-align: start; flex-shrink: 0;
-            background: #000; border: 1px solid rgba(255,255,255,0.15);
+            background: #111; border: 1px solid rgba(255,255,255,0.15);
         }
 
-        .slide-bg { width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 1; opacity: 0.4; }
-        .slide-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.9) 100%); }
+        /* Imagem de fundo do slide — agora dinâmica */
+        .slide-bg {
+            width: 100%; height: 100%; object-fit: cover;
+            position: absolute; z-index: 1; opacity: 0.45;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Placeholder enquanto a imagem não carregou */
+        .slide-bg-placeholder {
+            width: 100%; height: 100%; position: absolute; z-index: 1;
+            background: linear-gradient(135deg, #1a1f2e 0%, #0d111a 100%);
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .slide-bg-placeholder i { font-size: 3rem; color: rgba(196,166,97,0.2); animation: spin 2s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .slide-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.88) 100%); }
 
         .slide-inner { position: relative; z-index: 3; height: 100%; width: 100%; padding: var(--safe-margin); display: flex; flex-direction: column; justify-content: center; }
         .slide-title-ui { font-family: 'Playfair Display', serif; font-size: 2.3rem; color: #fff; margin-bottom: 15px; line-height: 1.05; font-weight: 900; text-transform: uppercase; }
@@ -105,11 +124,21 @@
         .slide-ig-ui { font-size: 0.75rem; font-weight: 800; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
         .slide-num-ui { font-size: 0.8rem; font-weight: 700; color: rgba(255,255,255,0.3); font-family: monospace; }
 
+        /* Badge indicando imagem gerada por IA */
+        .slide-ai-badge {
+            position: absolute; top: 16px; right: 16px; z-index: 4;
+            background: rgba(196,166,97,0.15); border: 1px solid rgba(196,166,97,0.3);
+            color: var(--accent); font-size: 0.55rem; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1.5px; padding: 4px 10px; border-radius: 100px;
+        }
+
         .loader-box { display: none; flex-direction: column; align-items: center; margin: 40px 0; gap: 20px; }
         .pulse-ai { width: 60px; height: 60px; background: var(--accent); border-radius: 50%; filter: blur(10px); animation: pulse 1.5s infinite alternate; }
         @keyframes pulse { from { opacity: 0.3; transform: scale(0.8); } to { opacity: 1; transform: scale(1.1); } }
 
-        .download-btn-single { margin-top: 10px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--border); padding: 8px 15px; border-radius: 6px; font-size: 0.7rem; cursor: pointer; font-weight: 700; text-transform: uppercase; }
+        .loader-steps { color: var(--text-low); font-size: 0.8rem; letter-spacing: 1px; text-align: center; }
+
+        .download-btn-single { background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--border); padding: 8px 15px; border-radius: 6px; font-size: 0.7rem; cursor: pointer; font-weight: 700; text-transform: uppercase; }
 
         footer { margin-top: 100px; text-align: center; border-top: 1px solid var(--border); padding: 60px 20px; }
         .support-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 32px; padding: 40px; display: inline-block; }
@@ -129,6 +158,7 @@
             <div class="wr-badge"><i class="fa-solid fa-bolt"></i> WR-TEC | HUGGING FACE POWERED</div>
             <h1>Gerador de<br>Carrosséis de Elite</h1>
             <p style="color: var(--text-low); font-size: 1.1rem;">Processamento via Hugging Face Inference API.</p>
+            <p style="color: var(--text-low); font-size: 1.1rem;">Texto + Imagens gerados por IA via Hugging Face.</p>
         </header>
 
         <div class="engine-card">
@@ -157,6 +187,7 @@
             <div class="loader-box" id="loader">
                 <div class="pulse-ai"></div>
                 <p style="color: var(--accent); font-weight: 800; letter-spacing: 2px;">IA PROCESSANDO...</p>
+                <p class="loader-steps" id="loader_step">Gerando roteiro e imagens simultaneamente...</p>
             </div>
 
             <div class="preview-area" id="preview_section">
@@ -176,22 +207,27 @@
     </div>
 
     <script>
+        // Imagem de fallback caso a geração de imagem falhe para algum slide
+        const FALLBACK_IMG = "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=1000&auto=format&fit=crop";
+
         async function generatePremiumCarousel() {
             const topic = document.getElementById('topic_input').value;
-            const ig = document.getElementById('user_handle').value;
+            const ig    = document.getElementById('user_handle').value;
             const total = parseInt(document.getElementById('num_slides').value);
             
-            if(!topic) { alert("O briefing é necessário!"); return; }
+            if (!topic) { alert("O briefing é necessário!"); return; }
 
-            const btn = document.getElementById('run_btn');
-            const loader = document.getElementById('loader');
+            const btn     = document.getElementById('run_btn');
+            const loader  = document.getElementById('loader');
             const preview = document.getElementById('preview_section');
-            const track = document.getElementById('track');
+            const track   = document.getElementById('track');
+            const step    = document.getElementById('loader_step');
 
             btn.disabled = true;
             loader.style.display = 'flex';
             preview.style.display = 'none';
             track.innerHTML = '';
+            step.textContent = 'Gerando roteiro e imagens simultaneamente...';
 
             try {
                 const response = await fetch('/api/generate', {
@@ -219,17 +255,27 @@
                 }
 
                 const slidesContent = data.slides;
+                const data = await response.json();
+                const slidesContent = data.slides;
+
+                step.textContent = 'Montando o carrossel...';
 
                 slidesContent.forEach((slide, i) => {
                     const wrapper = document.createElement('div');
                     wrapper.className = 'slide-wrapper';
+
+                    // Decide qual imagem usar: base64 da IA ou fallback do Unsplash
+                    const imgSrc = slide.image || FALLBACK_IMG;
+                    const isAiImage = !!slide.image;
 
                     const frame = document.createElement('div');
                     frame.className = 'slide-frame';
                     frame.id = `frame-${i}`;
                     frame.innerHTML = `
                         <img src="${slide.image}" class="slide-bg">
+                        <img src="${imgSrc}" class="slide-bg" crossorigin="anonymous">
                         <div class="slide-overlay"></div>
+                        ${isAiImage ? '<span class="slide-ai-badge"><i class="fa-solid fa-microchip"></i> AI IMAGE</span>' : ''}
                         <div class="slide-inner">
                             <div class="content-box">
                                 <h4 class="slide-title-ui">${slide.title.toUpperCase()}</h4>
@@ -237,7 +283,7 @@
                             </div>
                             <div class="slide-footer-ui">
                                 <span class="slide-ig-ui">${ig}</span>
-                                <span class="slide-num-ui">${i+1} / ${slidesContent.length}</span>
+                                <span class="slide-num-ui">${i + 1} / ${slidesContent.length}</span>
                             </div>
                         </div>
                     `;
@@ -245,7 +291,7 @@
                     const downloadBtn = document.createElement('button');
                     downloadBtn.className = 'download-btn-single';
                     downloadBtn.innerHTML = `<i class="fa-solid fa-camera"></i> Salvar PNG`;
-                    downloadBtn.onclick = () => downloadSlide(frame, i+1);
+                    downloadBtn.onclick = () => downloadSlide(frame, i + 1);
 
                     wrapper.appendChild(frame);
                     wrapper.appendChild(downloadBtn);
@@ -277,7 +323,7 @@
             navigator.clipboard.writeText(pixValue).then(() => { alert("Chave Pix copiada!"); });
         }
 
-        window.onload = function() {
+        window.onload = function () {
             const pixData = document.getElementById("pix_code").innerText;
             new QRCode(document.getElementById("qrcode"), { text: pixData, width: 140, height: 140 });
         };
