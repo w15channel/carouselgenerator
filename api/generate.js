@@ -1,7 +1,5 @@
 // api/generate.js
-// Vercel Serverless Function — geração de texto + imagens via Hugging Face
-
-const { InferenceClient } = require('@huggingface/inference');
+// Vercel Serverless Function — geração de texto + imagens via Google GenAI (Gemini)
 
 function cleanJsonFence(text) {
   return String(text || '')
@@ -10,62 +8,30 @@ function cleanJsonFence(text) {
     .trim();
 }
 
-async function generateSlideImage({ client, topic, slide }) {
-  const fallbackPrompt = [
-    `Instagram carousel about ${topic}`,
-    `Slide focus: ${slide.title || ''}`,
-    `Context: ${slide.body || ''}`,
-    'Cinematic, premium, editorial lighting, high detail',
-    'No text, no letters, no logos, no watermark',
-  ]
-    .join('. ')
-    .trim();
+function extractTextFromGeminiResponse(response) {
+  if (!response) return '';
 
-  const prompt = (slide.imagePrompt || fallbackPrompt).trim();
+  if (typeof response.text === 'function') {
+    return response.text();
+  }
 
-  const imageBlob = await client.textToImage({
-    provider: 'fal-ai',
-    model: 'Qwen/Qwen-Image-2512',
-    inputs: prompt,
-    parameters: { num_inference_steps: 5 },
-  });
+  if (typeof response.text === 'string') {
+    return response.text;
+  }
 
-  const buffer = Buffer.from(await imageBlob.arrayBuffer());
-  const base64 = buffer.toString('base64');
-  const mime = imageBlob.type || 'image/png';
-
-  return `data:${mime};base64,${base64}`;
+  return (
+    response?.candidates?.[0]?.content?.parts
+      ?.map((part) => part?.text || '')
+      .join('') || ''
+  );
 }
 
-module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+async function getGoogleClient(apiKey) {
+  const { GoogleGenAI } = await import('@google/genai');
+  return new GoogleGenAI({ apiKey });
+}
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método não permitido. Use POST.' });
-  }
-
-  const HF_TOKEN =
-    process.env.HF_TOKEN ||
-    process.env.HUGGINGFACE_API_KEY ||
-    process.env.HF_API_KEY;
-
-  if (!HF_TOKEN) {
-    return res
-      .status(500)
-      .json({ error: 'HF_TOKEN não configurada nas variáveis de ambiente.' });
-  }
-
-  const { topic, total = 5 } = req.body || {};
-  if (!topic || typeof topic !== 'string' || !topic.trim()) {
-    return res.status(400).json({ error: 'Campo "topic" é obrigatório.' });
-  }
-
-  const numSlides = Math.min(Math.max(parseInt(total, 10) || 5, 3), 10);
-  const client = new InferenceClient(HF_TOKEN);
-
+async function generateSlidesTextWithGoogle({ ai, topic, numSlides }) {
   const prompt = `
 Você é um estrategista de conteúdo especialista em criar carrosséis virais para Instagram.
 Gere um carrossel com exatamente ${numSlides} slides sobre o seguinte tema:
@@ -85,54 +51,108 @@ FORMATO EXATO:
 {"slides":[{"title":"...","body":"...","imagePrompt":"..."}]}
 `.trim();
 
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: prompt,
+    config: {
+      temperature: 0.8,
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const rawText = extractTextFromGeminiResponse(response);
+  if (!rawText) {
+    throw new Error('Resposta inesperada da IA de texto (Google).');
+  }
+
+  let parsed;
   try {
-    const hfRes = await fetch('https://router.huggingface.co/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${HF_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        provider: 'nebius',
-        model: 'Qwen/Qwen2.5-72B-Instruct',
-        messages: [
-          { role: 'system', content: 'Você responde sempre com JSON válido e sem markdown.' },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.8,
-        max_tokens: 2048,
-      }),
+    parsed = JSON.parse(cleanJsonFence(rawText));
+  } catch {
+    throw new Error('Formato inválido retornado pela IA de texto (Google).');
+  }
+
+  if (!Array.isArray(parsed.slides) || parsed.slides.length === 0) {
+    throw new Error('Formato de slides inválido na resposta da IA (Google).');
+  }
+
+  return parsed.slides.slice(0, numSlides);
+}
+
+async function generateSlideImageWithGoogle({ ai, topic, slide }) {
+  const fallbackPrompt = [
+    `Instagram carousel about ${topic}`,
+    `Slide focus: ${slide.title || ''}`,
+    `Context: ${slide.body || ''}`,
+    'Cinematic, premium, editorial lighting, high detail',
+    'No text, no letters, no logos, no watermark',
+  ]
+    .join('. ')
+    .trim();
+
+  const prompt = (slide.imagePrompt || fallbackPrompt).trim();
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash-preview-image-generation',
+    contents: prompt,
+    config: {
+      responseModalities: ['TEXT', 'IMAGE'],
+    },
+  });
+
+  const parts = response?.candidates?.[0]?.content?.parts || [];
+  const imagePart = parts.find((part) => part?.inlineData?.data);
+  const imageData = imagePart?.inlineData?.data;
+  const mimeType = imagePart?.inlineData?.mimeType || 'image/png';
+
+  if (!imageData) {
+    throw new Error('Gemini não retornou imagem para este slide.');
+  }
+
+  return `data:${mimeType};base64,${imageData}`;
+}
+
+module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Método não permitido. Use POST.' });
+  }
+
+  const GOOGLE_API_KEY =
+    process.env.GOOGLE_API_KEY ||
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_GENAI_API_KEY;
+
+  if (!GOOGLE_API_KEY) {
+    return res.status(500).json({
+      error: 'GOOGLE_API_KEY (ou GEMINI_API_KEY) não configurada nas variáveis de ambiente.',
+    });
+  }
+
+  const { topic, total = 5 } = req.body || {};
+  if (!topic || typeof topic !== 'string' || !topic.trim()) {
+    return res.status(400).json({ error: 'Campo "topic" é obrigatório.' });
+  }
+
+  const numSlides = Math.min(Math.max(parseInt(total, 10) || 5, 3), 10);
+
+  try {
+    const ai = await getGoogleClient(GOOGLE_API_KEY);
+
+    const slides = await generateSlidesTextWithGoogle({
+      ai,
+      topic,
+      numSlides,
     });
 
-    if (!hfRes.ok) {
-      const errText = await hfRes.text();
-      console.error('Hugging Face text API error:', errText);
-      return res.status(502).json({ error: `Erro na API de texto (${hfRes.status}).` });
-    }
-
-    const hfData = await hfRes.json();
-    const rawText = hfData?.choices?.[0]?.message?.content;
-    if (!rawText) {
-      return res.status(502).json({ error: 'Resposta inesperada da IA de texto.' });
-    }
-
-    let parsed;
-    try {
-      parsed = JSON.parse(cleanJsonFence(rawText));
-    } catch {
-      console.error('Texto retornado pela IA não era JSON válido.');
-      return res.status(502).json({ error: 'Formato inválido retornado pela IA de texto.' });
-    }
-
-    if (!Array.isArray(parsed.slides) || parsed.slides.length === 0) {
-      return res.status(502).json({ error: 'Formato de slides inválido na resposta da IA.' });
-    }
-
-    const slides = parsed.slides.slice(0, numSlides);
     const images = await Promise.all(
       slides.map(async (slide) => {
         try {
-          return await generateSlideImage({ client, topic: topic.trim(), slide });
+          return await generateSlideImageWithGoogle({ ai, topic: topic.trim(), slide });
         } catch (err) {
           console.warn('Falha ao gerar imagem do slide:', err?.message || err);
           return null;
@@ -150,6 +170,6 @@ FORMATO EXATO:
     console.error('Erro interno ao gerar carrossel:', err);
     return res
       .status(500)
-      .json({ error: 'Erro interno no servidor ao processar a geração.' });
+      .json({ error: err?.message || 'Erro interno no servidor ao processar a geração.' });
   }
 };
